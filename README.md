@@ -1,18 +1,32 @@
 # ECO-MONITOR AI — Dashboard Prototype
 
-Frontend demo dashboard untuk proyek ASIK ECO-MONITOR AI. Dibangun dengan React + Vite, Leaflet, Recharts, dan Lucide React.
+Frontend demo dashboard untuk proyek ASIK ECO-MONITOR AI. Dibangun dengan React + Vite, **Leaflet 2.0.0-beta.2 (native ESM)**, Recharts, dan Lucide React.
 
-> **Penting:** seluruh angka, marker, status perangkat, dan notifikasi di proyek ini adalah data simulasi. Dashboard belum tersambung ke CCTV, YOLO, MQTT, PostgreSQL/PostGIS, atau WhatsApp Gateway.
+> **Penting:** seluruh angka, marker, status perangkat, kepadatan heatmap, dan notifikasi di proyek ini adalah data simulasi. Dashboard belum tersambung ke CCTV, YOLO, MQTT, database, atau WhatsApp Gateway.
 
 ## Fitur demo
 
-- Ringkasan KPI pemantauan.
-- Peta interaktif Perairan Pulau Merak Besar dengan zona dan marker deteksi ilustratif.
-- Grafik tren deteksi dan komposisi sampah.
+- Ringkasan KPI pemantauan, tren deteksi, komposisi sampah, dan peringatan.
+- Peta interaktif Perairan Pulau Merak Besar dengan heat spot radial, zona, marker deteksi, dan marker kamera.
+- Toggle lapisan Heatmap, Zona, Deteksi, dan Kamera.
+- Kontrol zoom Leaflet di kanan atas, fokus ulang lokasi, dan fullscreen.
 - Riwayat deteksi dengan pencarian, filter, serta ekspor CSV.
-- Halaman peringatan dengan aksi tandai ditangani dan tombol membuat alert uji.
+- Pusat peringatan dengan aksi tandai ditangani dan tombol membuat alert uji.
 - Halaman status perangkat dan arsitektur integrasi.
+- Skeleton shimmer saat aplikasi pertama dibuka, berpindah halaman, dan refresh.
 - Layout responsif untuk desktop dan ponsel.
+
+## Versi peta
+
+Proyek ini menggunakan Leaflet **2.0.0-beta.2**, dirilis sebagai pre-release pada 6 November 2026. Integrasi dilakukan langsung melalui class ESM Leaflet, bukan React Leaflet, agar tidak bergantung pada wrapper React yang belum dipastikan kompatibel dengan Leaflet 2.
+
+Perubahan API mengikuti panduan migrasi Leaflet 1.x ke 2.0:
+
+- `LeafletMap` digunakan sebagai pengganti factory `L.map()`.
+- `TileLayer`, `Circle`, `CircleMarker`, `Marker`, `DivIcon`, `LayerGroup`, `ZoomControl`, dan `ScaleControl` diimpor sebagai named exports.
+- CSS Leaflet dimuat melalui `leaflet/styles.css`.
+
+Leaflet 2.0 masih beta; untuk implementasi produksi, evaluasi kompatibilitas plugin, browser, dan stabilitas rilis sebelum mengunci versi.
 
 ## Menjalankan secara lokal
 
@@ -70,6 +84,10 @@ CCTV / Edge Device
 ```
 
 Untuk saat ini frontend masih membaca data statis dari `mockData.js`. Ketika API siap, ganti sumber data tersebut dengan `fetch()` ke backend dan gunakan WebSocket/SSE bila dibutuhkan pembaruan real-time.
+
+## Catatan heatmap
+
+Heatmap saat ini merupakan visualisasi demo menggunakan radial gradient yang diposisikan pada koordinat ilustratif. Ini bukan hasil interpolasi spasial dari sensor atau data deteksi aktual. Nilai kepadatan perlu dihitung dan divalidasi dari data lapangan sebelum digunakan untuk analisis ilmiah.
 
 ## Catatan deployment WhatsApp Gateway
 
