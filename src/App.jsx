@@ -1,17 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Activity, AlertOctagon, AlertTriangle, ArrowDownRight, ArrowUpRight,
-  Bell, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp,
-  Clock3, Cloud, Cpu, Download, Droplets, ExternalLink, Eye, FileText,
-  Filter, Gauge, Leaf, Map as MapIcon, MapPin, Menu, MessageCircle,
-  MoreHorizontal, Radio, RefreshCw, Search, Send, Settings2, ShieldCheck,
-  Signal, Smartphone, Waves, Wifi, X, Zap
+  Bell, Check, CheckCircle2, ChevronRight, CircleHelp, Clock3, Cpu, Download,
+  ExternalLink, Eye, FileText, Filter, Gauge, Leaf, Map as MapIcon, MapPin,
+  Menu, MessageCircle, MoreHorizontal, Radio, RefreshCw, Search, Send, ShieldCheck,
+  Waves, Wifi, X, Zap, Crosshair, Maximize2, Minimize2, BookOpen
 } from 'lucide-react';
 import {
   Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis
 } from 'recharts';
-import { Circle, CircleMarker, MapContainer, Popup, TileLayer, Tooltip as MapTooltip } from 'react-leaflet';
+import { LeafletMap, TileLayer, Circle, CircleMarker, LayerGroup, ZoomControl, ScaleControl, Marker, DivIcon } from 'leaflet';
 import { alertsSeed, detections, islandCenter, trendMonth, trendToday, trendWeek } from './data/mockData';
 
 const navItems = [
@@ -30,8 +29,8 @@ const pageMeta = {
   devices: ['Status perangkat', 'Kondisi perangkat pemantauan dan konektivitas sistem.'],
 };
 
-function formatNow() {
-  return new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
+function formatNow(value = new Date()) {
+  return new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(value);
 }
 
 function Badge({ children, tone = 'neutral', dot = false }) {
@@ -44,7 +43,6 @@ function MetricCard({ title, value, unit, change, trend = 'up', icon: Icon, tone
       <div className="metric-top">
         <span className={`metric-icon metric-${tone}`}><Icon size={18} strokeWidth={2.1} /></span>
         <span className="metric-label">{title}</span>
-        <button className="icon-button subtle" title="Informasi"><CircleHelp size={15} /></button>
       </div>
       <div className="metric-value-row"><strong>{value}</strong>{unit && <span>{unit}</span>}</div>
       <div className="metric-foot">
@@ -58,43 +56,174 @@ function MetricCard({ title, value, unit, change, trend = 'up', icon: Icon, tone
 }
 
 function MapPanel({ compact = false }) {
-  const points = detections.slice(0, 6);
+  const frameRef = useRef(null);
+  const mapElementRef = useRef(null);
+  const mapRef = useRef(null);
+  const layerRefs = useRef({});
+  const [visibleLayers, setVisibleLayers] = useState({ heat: true, zones: true, detections: true, cameras: true });
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!mapElementRef.current || mapRef.current) return undefined;
+
+    const map = new LeafletMap(mapElementRef.current, {
+      minZoom: 13,
+      maxZoom: 19,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      zoomControl: false,
+      scrollWheelZoom: true,
+      preferCanvas: false,
+      attributionControl: true,
+    });
+    map.setView(islandCenter, compact ? 15 : 16);
+
+    const baseLayer = new TileLayer(
+      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      {
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+      },
+    );
+    baseLayer.addTo(map);
+    new ZoomControl({ position: 'topright' }).addTo(map);
+    new ScaleControl({ position: 'bottomleft', metric: true, imperial: false, maxWidth: 110 }).addTo(map);
+
+    const heat = new LayerGroup();
+    const zones = new LayerGroup();
+    const points = new LayerGroup();
+    const cameras = new LayerGroup();
+
+    // Radial-gradient markers create a smooth, lightweight heat surface without a plugin.
+    const heatPane = map.createPane('heatmapPane');
+    heatPane.style.zIndex = '350';
+    const addHotspot = (center, variant, size) => {
+      const icon = new DivIcon({
+        className: 'heat-blob-icon',
+        html: `<div class="heat-blob heat-blob-${variant}"></div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      });
+      new Marker(center, { pane: 'heatmapPane', icon, interactive: false, keyboard: false }).addTo(heat);
+    };
+
+    addHotspot([-5.9332, 105.98835], 'high', 270);
+    addHotspot([-5.93445, 105.9901], 'medium', 235);
+    addHotspot([-5.93195, 105.99165], 'low', 205);
+
+    const zoneSpecs = [
+      { name: 'Zona A', label: 'Kepadatan tinggi', center: [-5.9332, 105.98835], radius: 175, color: '#df735b' },
+      { name: 'Zona B', label: 'Kepadatan sedang', center: [-5.93445, 105.9901], radius: 145, color: '#dca54d' },
+      { name: 'Zona C', label: 'Kepadatan rendah', center: [-5.93195, 105.99165], radius: 125, color: '#329f96' },
+    ];
+    zoneSpecs.forEach((zone) => {
+      const ring = new Circle(zone.center, {
+        radius: zone.radius,
+        color: zone.color,
+        weight: 1.6,
+        opacity: 0.8,
+        fillColor: zone.color,
+        fillOpacity: 0.035,
+        dashArray: '5 8',
+      });
+      ring.bindPopup(`<div class="map-popup"><strong>${zone.name}</strong><span>${zone.label}</span><b>Data zona simulasi</b></div>`);
+      ring.addTo(zones);
+    });
+
+    detections.forEach((point) => {
+      const color = point.density === 'Tinggi' ? '#df7058' : point.density === 'Sedang' ? '#dfa84c' : '#2b9f96';
+      const marker = new CircleMarker([point.lat, point.lng], {
+        radius: 7,
+        color: '#ffffff',
+        weight: 2.5,
+        fillColor: color,
+        fillOpacity: 1,
+        opacity: 1,
+        bubblingPointerEvents: false,
+      });
+      marker.bindPopup(`<div class="map-popup"><strong>${point.type}</strong><span>${point.id}</span><span>${point.zone} · ${point.time} WIB</span><b>${point.confidence}% confidence</b></div>`);
+      marker.addTo(points);
+    });
+
+    [
+      { name: 'CCTV-01 · Dermaga Utara', latlng: [-5.9321, 105.98985] },
+      { name: 'CCTV-02 · Area Barat', latlng: [-5.93525, 105.9871] },
+    ].forEach((camera) => {
+      const marker = new CircleMarker(camera.latlng, {
+        radius: 8,
+        color: '#ffffff',
+        weight: 2.5,
+        fillColor: '#397cbb',
+        fillOpacity: 1,
+      });
+      marker.bindPopup(`<div class="map-popup"><strong>${camera.name}</strong><span>Status perangkat: aktif (simulasi)</span><b>Kamera pemantauan</b></div>`);
+      marker.addTo(cameras);
+    });
+
+    layerRefs.current = { heat, zones, points, cameras };
+    heat.addTo(map);
+    zones.addTo(map);
+    points.addTo(map);
+    cameras.addTo(map);
+    mapRef.current = map;
+
+    const resizeFrame = window.requestAnimationFrame(() => map.invalidateSize());
+    const onFullscreenChange = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+
+    return () => {
+      window.cancelAnimationFrame(resizeFrame);
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      map.remove();
+      mapRef.current = null;
+      layerRefs.current = {};
+    };
+  }, [compact]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    Object.entries(layerRefs.current).forEach(([key, layer]) => {
+      if (visibleLayers[key] && !map.hasLayer(layer)) layer.addTo(map);
+      if (!visibleLayers[key] && map.hasLayer(layer)) map.removeLayer(layer);
+    });
+  }, [visibleLayers]);
+
+  const resetView = () => mapRef.current?.setView(islandCenter, compact ? 15 : 16, { animate: true });
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await frameRef.current?.requestFullscreen?.();
+    } catch {
+      // Fullscreen is optional; map controls remain available when the browser blocks it.
+    }
+  };
+  const toggleLayer = (key) => setVisibleLayers((current) => ({ ...current, [key]: !current[key] }));
+
   return (
-    <div className={`map-frame ${compact ? 'map-compact' : ''}`}>
-      <MapContainer center={islandCenter} zoom={15} scrollWheelZoom={true}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Circle center={[-5.93325, 105.98835]} radius={105} pathOptions={{ color: '#e69a3a', fillColor: '#f2b65e', fillOpacity: 0.16, weight: 1.5, dashArray: '5 6' }}>
-          <MapTooltip sticky>Zona A · Kepadatan tinggi</MapTooltip>
-        </Circle>
-        <Circle center={[-5.9348, 105.9906]} radius={95} pathOptions={{ color: '#d4a84f', fillColor: '#e9c56d', fillOpacity: 0.13, weight: 1.5, dashArray: '5 6' }}>
-          <MapTooltip sticky>Zona B · Kepadatan sedang</MapTooltip>
-        </Circle>
-        <Circle center={[-5.93195, 105.99185]} radius={85} pathOptions={{ color: '#32a79a', fillColor: '#43c4ae', fillOpacity: 0.12, weight: 1.5, dashArray: '5 6' }}>
-          <MapTooltip sticky>Zona C · Kepadatan rendah</MapTooltip>
-        </Circle>
-        {points.map((point, index) => (
-          <CircleMarker
-            key={point.id}
-            center={[point.lat, point.lng]}
-            radius={index < 2 ? 8 : 6}
-            pathOptions={{ color: '#ffffff', weight: 2, fillColor: point.density === 'Tinggi' ? '#e26b54' : point.density === 'Sedang' ? '#e5a949' : '#2da99c', fillOpacity: 0.95 }}
-          >
-            <Popup>
-              <div className="map-popup">
-                <strong>{point.type}</strong>
-                <span>{point.id}</span>
-                <span>{point.zone} · {point.time} WIB</span>
-                <b>{point.confidence}% confidence</b>
-              </div>
-            </Popup>
-          </CircleMarker>
-        ))}
-      </MapContainer>
-      <div className="map-demo-stamp"><span className="stamp-dot" /> PETA SIMULASI</div>
-      <div className="map-scale"><span /> 100 m</div>
+    <div className={`map-widget ${compact ? 'map-widget-compact' : ''}`}>
+      {!compact && (
+        <div className="map-toolbar">
+          <div className="map-layer-switches" aria-label="Lapisan peta">
+            <button className={visibleLayers.heat ? 'active' : ''} onClick={() => toggleLayer('heat')}><span className="layer-symbol heat-symbol" />Heatmap</button>
+            <button className={visibleLayers.zones ? 'active' : ''} onClick={() => toggleLayer('zones')}><span className="layer-symbol zone-symbol" />Zona</button>
+            <button className={visibleLayers.detections ? 'active' : ''} onClick={() => toggleLayer('detections')}><span className="layer-symbol point-symbol" />Deteksi</button>
+            <button className={visibleLayers.cameras ? 'active' : ''} onClick={() => toggleLayer('cameras')}><span className="layer-symbol camera-symbol" />Kamera</button>
+          </div>
+          <div className="map-actions">
+            <button className="map-action-button" onClick={resetView} title="Kembalikan tampilan peta"><Crosshair size={14} /><span>Fokus lokasi</span></button>
+            <button className="map-action-button map-fullscreen-button" onClick={toggleFullscreen} title={fullscreen ? 'Keluar dari layar penuh' : 'Layar penuh'}>{fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}<span>{fullscreen ? 'Keluar' : 'Perbesar'}</span></button>
+          </div>
+        </div>
+      )}
+      <div className={`map-frame ${compact ? 'map-compact' : ''}`} ref={frameRef}>
+        <div className="leaflet-map-host" ref={mapElementRef} />
+        <div className="map-demo-stamp"><span className="stamp-dot" /> PETA SIMULASI</div>
+        {compact && <button className="map-reset-mini" onClick={resetView} aria-label="Reset tampilan peta" title="Reset tampilan peta"><Crosshair size={14} /></button>}
+        {fullscreen && <button className="map-fullscreen-exit" onClick={toggleFullscreen} aria-label="Keluar dari layar penuh"><Minimize2 size={14} /> Keluar layar penuh</button>}
+      </div>
+      {!compact && <div className="map-map-footer"><span><i className="zone-dot high" />Zona A · Padat</span><span><i className="zone-dot medium" />Zona B · Sedang</span><span><i className="zone-dot low" />Zona C · Rendah</span><small>Marker dan intensitas merupakan data ilustratif.</small></div>}
     </div>
   );
 }
@@ -145,7 +274,7 @@ function CompositionCard() {
   ];
   return (
     <section className="panel composition-panel">
-      <div className="panel-heading"><div><h3>Komposisi sampah</h3><p>Proporsi berdasarkan hasil deteksi</p></div><button className="icon-button"><MoreHorizontal size={18} /></button></div>
+      <div className="panel-heading"><div><h3>Komposisi sampah</h3><p>Proporsi berdasarkan hasil deteksi</p></div><Badge tone="neutral">3 kelas</Badge></div>
       <div className="composition-content">
         <div className="donut-wrap">
           <ResponsiveContainer width="100%" height="100%">
@@ -199,7 +328,7 @@ function AlertRow({ alert, onResolve }) {
     <div className={`alert-row alert-${alert.level}`}>
       <span className="alert-symbol"><Icon size={17} /></span>
       <div className="alert-copy"><strong>{alert.title}</strong><p>{alert.description}</p><div className="alert-meta"><span><MapPin size={12} />{alert.zone}</span><span><Clock3 size={12} />{alert.time}</span></div></div>
-      {alert.status !== 'Selesai' && alert.status !== 'Ditangani' && <button className="resolve-button" onClick={() => onResolve(alert.id)} title="Tandai ditinjau"><Check size={15} /></button>}
+      {alert.status !== 'Selesai' && alert.status !== 'Ditangani' && <button className="resolve-button" onClick={() => onResolve(alert.id)} title="Tandai ditangani" aria-label={`Tandai ${alert.id} telah ditangani`}><Check size={15} /></button>}
     </div>
   );
 }
@@ -251,7 +380,6 @@ function MapPage() {
       <section className="panel full-map-panel">
         <div className="panel-heading"><div><h3>Peta interaktif Pulau Merak Besar</h3><p>Klik titik deteksi untuk melihat detail objek dan waktu pengamatan.</p></div><Badge tone="neutral">Koordinat indikatif</Badge></div>
         <MapPanel />
-        <div className="map-key-row"><span><i className="zone-dot high"/>Kepadatan tinggi</span><span><i className="zone-dot medium"/>Kepadatan sedang</span><span><i className="zone-dot low"/>Kepadatan rendah</span><span><i className="map-point-key"/>Titik deteksi</span></div>
       </section>
       <div className="notice-card"><CircleHelp size={18} /><div><strong>Catatan data lokasi</strong><p>Marker dan zona pada peta merupakan koordinat ilustratif untuk kebutuhan demonstrasi. Koordinat aktual perlu diperoleh melalui survei GPS dan kalibrasi kamera sebelum sistem digunakan di lapangan.</p></div></div>
     </div>
@@ -272,7 +400,7 @@ function DetectionsPage() {
     const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a'); link.href = url; link.download = 'eco-monitor-riwayat-deteksi-demo.csv'; link.click(); URL.revokeObjectURL(url);
+    const link = document.createElement('a'); link.href = url; link.download = 'eco-monitor-riwayat-deteksi-demo.csv'; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   return (
     <div className="page-stack">
@@ -287,7 +415,7 @@ function DetectionsPage() {
         <div className="table-scroll"><table className="data-table detections-table"><thead><tr><th>ID DETEKSI</th><th>WAKTU</th><th>JENIS SAMPAH</th><th>ZONA</th><th>CONFIDENCE</th><th>KEPADATAN</th><th>STATUS</th></tr></thead><tbody>
           {filtered.map((item) => <tr key={item.id}><td className="id-cell">{item.id}</td><td className="time-cell">{item.time}<small>{item.date}</small></td><td><span className="waste-type"><i className={`waste-icon ${item.classKey}`} />{item.type}</span></td><td>{item.zone}</td><td><span className="confidence">{item.confidence.toFixed(1)}%</span></td><td><Badge tone={item.density === 'Tinggi' ? 'danger' : item.density === 'Sedang' ? 'warning' : 'success'}>{item.density}</Badge></td><td><Badge tone={item.status === 'Ditangani' ? 'success' : item.status === 'Perlu ditangani' ? 'danger' : 'neutral'}>{item.status}</Badge></td></tr>)}
         </tbody></table>{filtered.length === 0 && <div className="empty-state table-empty">Tidak ada data yang cocok dengan pencarian.</div>}</div>
-        <div className="table-footer"><span>Menampilkan {filtered.length} dari 8 data simulasi</span><span>Data demonstrasi · 06 November 2026</span></div>
+        <div className="table-footer"><span>Menampilkan {filtered.length} dari 8 data simulasi</span><span>Data demonstrasi · data simulasi</span></div>
       </section>
     </div>
   );
@@ -323,9 +451,51 @@ function DevicesPage() {
         <MetricCard title="Gangguan sistem" value="00" change="Belum ada" trend="down" footnote="belum ada integrasi nyata" icon={ShieldCheck} tone="purple" />
       </div>
       <section className="panel devices-panel"><div className="panel-heading"><div><h3>Inventaris perangkat</h3><p>Status komponen dalam rancangan ECO-MONITOR AI.</p></div><Badge tone="neutral">Mode demonstrasi</Badge></div>
-        <div className="device-list">{devices.map((d) => <div className="device-row" key={d.name}><span className="device-icon"><d.icon size={20} /></span><div className="device-main"><strong>{d.name}</strong><span>{d.desc}</span></div><div className="device-value">{d.value}</div><Badge tone={d.tone} dot>{d.status}</Badge><button className="icon-button subtle"><MoreHorizontal size={17} /></button></div>)}</div>
+        <div className="device-list">{devices.map((d) => <div className="device-row" key={d.name}><span className="device-icon"><d.icon size={20} /></span><div className="device-main"><strong>{d.name}</strong><span>{d.desc}</span></div><div className="device-value">{d.value}</div><Badge tone={d.tone} dot>{d.status}</Badge></div>)}</div>
       </section>
       <div className="notice-card"><Zap size={18} /><div><strong>Arsitektur integrasi yang direncanakan</strong><p>Edge Device → MQTT → Backend API → Database → Web Dashboard. Layanan WhatsApp Gateway berjalan terpisah di Koyeb dan menerima permintaan alert dari backend.</p></div></div>
+    </div>
+  );
+}
+
+function SkeletonBlock({ className = '', width, height }) {
+  return <span className={`skeleton-block ${className}`} style={{ width, height }} aria-hidden="true" />;
+}
+
+function SkeletonMetric() {
+  return (
+    <div className="metric-card skeleton-card">
+      <div className="skeleton-metric-head"><SkeletonBlock width="32px" height="32px" /><SkeletonBlock width="58%" height="10px" /></div>
+      <SkeletonBlock width="42%" height="27px" className="skeleton-metric-value" />
+      <SkeletonBlock width="68%" height="9px" />
+    </div>
+  );
+}
+
+function SkeletonPanel({ kind = 'chart' }) {
+  if (kind === 'map') return <section className="panel skeleton-panel"><div className="skeleton-heading"><SkeletonBlock width="190px" height="14px" /><SkeletonBlock width="105px" height="24px" /></div><div className="skeleton-map"><span /><span /><span /><i /><i /><i /></div><div className="skeleton-map-legend"><SkeletonBlock width="27%" height="10px" /><SkeletonBlock width="27%" height="10px" /><SkeletonBlock width="27%" height="10px" /></div></section>;
+  if (kind === 'table') return <section className="panel skeleton-panel"><div className="skeleton-heading"><SkeletonBlock width="170px" height="14px" /><SkeletonBlock width="90px" height="27px" /></div><div className="skeleton-table-head"><SkeletonBlock width="20%" height="9px" /><SkeletonBlock width="21%" height="9px" /><SkeletonBlock width="14%" height="9px" /><SkeletonBlock width="15%" height="9px" /></div>{[0,1,2,3,4].map((n) => <div className="skeleton-table-row" key={n}><SkeletonBlock width="20%" height="10px" /><SkeletonBlock width="21%" height="10px" /><SkeletonBlock width="14%" height="10px" /><SkeletonBlock width="15%" height="10px" /></div>)}</section>;
+  if (kind === 'alerts') return <section className="panel skeleton-panel"><div className="skeleton-heading"><SkeletonBlock width="160px" height="14px" /><SkeletonBlock width="90px" height="27px" /></div>{[0,1,2].map((n) => <div className="skeleton-alert-row" key={n}><SkeletonBlock width="32px" height="32px" /><div><SkeletonBlock width="190px" height="10px" /><SkeletonBlock width="270px" height="8px" /></div></div>)}</section>;
+  if (kind === 'devices') return <section className="panel skeleton-panel"><div className="skeleton-heading"><SkeletonBlock width="170px" height="14px" /><SkeletonBlock width="100px" height="22px" /></div>{[0,1,2,3,4].map((n) => <div className="skeleton-device-row" key={n}><SkeletonBlock width="37px" height="37px" /><SkeletonBlock width="35%" height="10px" /><SkeletonBlock width="20%" height="9px" /></div>)}</section>;
+  return <section className="panel skeleton-panel"><div className="skeleton-heading"><SkeletonBlock width="150px" height="14px" /><SkeletonBlock width="100px" height="24px" /></div><SkeletonBlock width="100%" height="165px" className="skeleton-chart" /><SkeletonBlock width="65%" height="9px" /></section>;
+}
+
+function PageSkeleton({ page }) {
+  const metricCount = page === 'overview' ? 4 : 3;
+  return (
+    <div className="page-stack page-skeleton" aria-label="Memuat data halaman" aria-busy="true">
+      <div className={`metrics-grid ${page === 'overview' ? '' : 'map-metrics'}`}>
+        {Array.from({ length: metricCount }, (_, index) => <SkeletonMetric key={index} />)}
+      </div>
+      {page === 'overview' && <>
+        <SkeletonPanel kind="map" />
+        <div className="two-column-grid"><SkeletonPanel /><SkeletonPanel /></div>
+        <div className="two-column-grid lower-grid"><SkeletonPanel kind="table" /><SkeletonPanel kind="alerts" /></div>
+      </>}
+      {page === 'map' && <SkeletonPanel kind="map" />}
+      {page === 'detections' && <SkeletonPanel kind="table" />}
+      {page === 'alerts' && <SkeletonPanel kind="alerts" />}
+      {page === 'devices' && <SkeletonPanel kind="devices" />}
     </div>
   );
 }
@@ -338,70 +508,147 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [now, setNow] = useState(new Date());
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [noticeVisible, setNoticeVisible] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [isPageLoading, setIsPageLoading] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    setIsPageLoading(true);
+    const timer = window.setTimeout(() => setIsPageLoading(false), 680);
+    return () => window.clearTimeout(timer);
+  }, [page, refreshKey]);
+
+  useEffect(() => {
     if (!toast) return undefined;
     const timer = setTimeout(() => setToast(''), 3200);
     return () => clearTimeout(timer);
   }, [toast]);
 
   const unread = alerts.filter((a) => a.status !== 'Selesai' && a.status !== 'Ditangani').length;
-  const setPageSafe = (next) => { setPage(next); setMobileNavOpen(false); };
+  const setPageSafe = (next) => {
+    if (next !== page) setPage(next);
+    setMobileNavOpen(false);
+    setShowProfileMenu(false);
+  };
+  const refreshPage = () => {
+    setRefreshKey((value) => value + 1);
+    setToast('Memuat ulang tampilan menggunakan data simulasi.');
+  };
   const resolveAlert = (id) => {
     setAlerts((current) => current.map((a) => a.id === id ? { ...a, status: 'Ditangani' } : a));
-    setToast('Peringatan ditandai telah ditinjau (simulasi).');
+    setToast('Peringatan ditandai telah ditangani (simulasi).');
   };
   const createTestAlert = () => {
     const id = `ALT-${String(82 + alerts.length - alertsSeed.length).padStart(4, '0')}`;
-    const newAlert = { id, title: 'Uji notifikasi ECO-MONITOR AI', description: 'Ini adalah alert uji untuk demonstrasi alur peringatan.', time: new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(new Date()) + ' WIB', zone: 'Zona A', level: 'warning', status: 'Belum ditangani' };
+    const newAlert = {
+      id,
+      title: 'Uji notifikasi ECO-MONITOR AI',
+      description: 'Ini adalah alert uji untuk demonstrasi alur peringatan.',
+      time: new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(new Date()) + ' WIB',
+      zone: 'Zona A',
+      level: 'warning',
+      status: 'Belum ditangani',
+    };
     setAlerts((current) => [newAlert, ...current]);
     setToast('Alert demo berhasil dibuat. Tidak ada pesan WhatsApp yang dikirim.');
   };
+
   const [title, subtitle] = pageMeta[page];
 
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`}>
-        <div className="brand-lockup"><div className="brand-symbol"><Waves size={21} /></div><div><strong>ECO<span>·</span>MONITOR</strong><small>MARINE INTELLIGENCE</small></div><button className="mobile-close icon-button" onClick={() => setMobileNavOpen(false)}><X size={19} /></button></div>
-        <div className="workspace-switcher"><span className="workspace-avatar">MB</span><span><strong>Merak Besar</strong><small>Project workspace</small></span><ChevronDown size={15} /></div>
-        <nav className="side-nav">
+        <div className="brand-lockup">
+          <div className="brand-symbol"><Waves size={21} /></div>
+          <div><strong>ECO<span>·</span>MONITOR</strong><small>MARINE INTELLIGENCE</small></div>
+          <button className="mobile-close icon-button" onClick={() => setMobileNavOpen(false)} aria-label="Tutup menu"><X size={19} /></button>
+        </div>
+        <div className="workspace-switcher">
+          <span className="workspace-avatar">MB</span>
+          <span><strong>Merak Besar</strong><small>Project workspace</small></span>
+        </div>
+        <nav className="side-nav" aria-label="Navigasi utama">
           {navItems.map((item, index) => <React.Fragment key={item.id}>
             {item.section && <div className={`nav-section ${index === 0 ? 'first-section' : ''}`}>{item.section}</div>}
-            <button className={`nav-item ${page === item.id ? 'selected' : ''}`} onClick={() => setPageSafe(item.id)}><item.icon size={18} strokeWidth={1.9} /><span>{item.label}</span>{item.id === 'alerts' && unread > 0 ? <em>{unread}</em> : item.count && item.id === 'detections' ? <small>{item.count}</small> : null}</button>
+            <button className={`nav-item ${page === item.id ? 'selected' : ''}`} onClick={() => setPageSafe(item.id)} aria-current={page === item.id ? 'page' : undefined}>
+              <item.icon size={18} strokeWidth={1.9} /><span>{item.label}</span>
+              {item.id === 'alerts' && unread > 0 ? <em>{unread}</em> : item.count && item.id === 'detections' ? <small>{item.count}</small> : null}
+            </button>
           </React.Fragment>)}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-help"><span className="help-icon"><CircleHelp size={17} /></span><div><strong>Butuh bantuan?</strong><small>Lihat panduan dashboard</small></div><ChevronRight size={15} /></div>
-          <div className="profile-row"><div className="profile-avatar">AD</div><div className="profile-copy"><strong>Administrator</strong><small>Project operator</small></div><button className="icon-button dark-icon" onClick={() => setShowProfileMenu((v) => !v)}><MoreHorizontal size={18} /></button>{showProfileMenu && <div className="profile-popover"><strong>Mode demonstrasi</strong><span>Akun administrator contoh.</span></div>}</div>
+          <button className="sidebar-help" onClick={() => setHelpOpen(true)}>
+            <span className="help-icon"><CircleHelp size={17} /></span>
+            <span><strong>Butuh bantuan?</strong><small>Lihat panduan dashboard</small></span>
+            <ChevronRight size={15} />
+          </button>
+          <div className="profile-row">
+            <div className="profile-avatar">AD</div>
+            <div className="profile-copy"><strong>Administrator</strong><small>Project operator</small></div>
+            <button className="icon-button dark-icon" onClick={() => setShowProfileMenu((value) => !value)} aria-label="Informasi akun" aria-expanded={showProfileMenu}><MoreHorizontal size={18} /></button>
+            {showProfileMenu && <div className="profile-popover"><strong>Mode demonstrasi</strong><span>Akun administrator contoh.</span><span>Hak akses: operator proyek.</span></div>}
+          </div>
         </div>
       </aside>
-      {mobileNavOpen && <button className="mobile-scrim" onClick={() => setMobileNavOpen(false)} aria-label="Tutup menu" />}
+      {mobileNavOpen && <button className="mobile-scrim" onClick={() => setMobileNavOpen(false)} aria-label="Tutup menu navigasi" />}
 
       <main className="main-content">
         <header className="topbar">
-          <div className="topbar-left"><button className="mobile-menu icon-button" onClick={() => setMobileNavOpen(true)}><Menu size={20} /></button><div className="breadcrumb"><span>Workspace</span><ChevronRight size={14} /><strong>{pageMeta[page][0]}</strong></div></div>
-          <div className="topbar-right"><span className="top-date">{formatNow()}</span><span className="top-divider"/><button className="icon-button notification-button" onClick={() => setPageSafe('alerts')} title="Peringatan"><Bell size={18} />{unread > 0 && <i />}</button><div className="top-avatar">AD</div></div>
+          <div className="topbar-left">
+            <button className="mobile-menu icon-button" onClick={() => setMobileNavOpen(true)} aria-label="Buka menu"><Menu size={20} /></button>
+            <div className="breadcrumb"><span>Workspace</span><ChevronRight size={14} /><strong>{pageMeta[page][0]}</strong></div>
+          </div>
+          <div className="topbar-right">
+            <span className="top-date">{formatNow(now)}</span><span className="top-divider" />
+            <button className="icon-button notification-button" onClick={() => setPageSafe('alerts')} title="Buka peringatan" aria-label={`Buka peringatan, ${unread} belum ditangani`}><Bell size={18} />{unread > 0 && <i />}</button>
+            <div className="top-avatar" aria-label="Administrator">AD</div>
+          </div>
         </header>
 
         <div className="content-wrap">
-          <div className="page-title-row"><div><div className="eyebrow"><span className="eyebrow-line"/> MARINE ENVIRONMENT MONITORING</div><h1>{title}</h1><p>{subtitle}</p></div><div className="page-actions"><Badge tone="warning" dot>DATA SIMULASI</Badge><button className="outline-button refresh-button" onClick={() => setToast('Tampilan diperbarui menggunakan data simulasi.')}><RefreshCw size={14} /> Refresh</button></div></div>
-          <div className="demo-notice"><span className="demo-notice-icon"><Activity size={15} /></span><span><strong>Mode demonstrasi aktif.</strong> Seluruh angka, status perangkat, dan deteksi pada halaman ini merupakan data ilustratif, bukan hasil sensor langsung.</span><button onClick={() => setToast('Terima kasih. Mode demonstrasi tetap aktif.')}>Mengerti</button></div>
+          <div className="page-title-row">
+            <div><div className="eyebrow"><span className="eyebrow-line" /> MARINE ENVIRONMENT MONITORING</div><h1>{title}</h1><p>{subtitle}</p></div>
+            <div className="page-actions"><Badge tone="warning" dot>DATA SIMULASI</Badge><button className="outline-button refresh-button" onClick={refreshPage}><RefreshCw size={14} /> Refresh</button></div>
+          </div>
+          {noticeVisible && <div className="demo-notice">
+            <span className="demo-notice-icon"><Activity size={15} /></span>
+            <span><strong>Mode demonstrasi aktif.</strong> Seluruh angka, status perangkat, dan deteksi merupakan data ilustratif, bukan hasil sensor langsung.</span>
+            <button className="notice-dismiss" onClick={() => setNoticeVisible(false)} aria-label="Tutup informasi mode demo">Mengerti <X size={13} /></button>
+          </div>}
 
-          {page === 'overview' && <OverviewPage alerts={alerts} onViewAll={() => setPageSafe('alerts')} onResolve={resolveAlert} range={range} setRange={setRange} onNavigate={setPageSafe} />}
-          {page === 'map' && <MapPage />}
-          {page === 'detections' && <DetectionsPage />}
-          {page === 'alerts' && <AlertsPage alerts={alerts} onResolve={resolveAlert} onTestAlert={createTestAlert} />}
-          {page === 'devices' && <DevicesPage />}
+          {isPageLoading ? <PageSkeleton page={page} /> : <>
+            {page === 'overview' && <OverviewPage alerts={alerts} onViewAll={() => setPageSafe('alerts')} onResolve={resolveAlert} range={range} setRange={setRange} onNavigate={setPageSafe} />}
+            {page === 'map' && <MapPage />}
+            {page === 'detections' && <DetectionsPage />}
+            {page === 'alerts' && <AlertsPage alerts={alerts} onResolve={resolveAlert} onTestAlert={createTestAlert} />}
+            {page === 'devices' && <DevicesPage />}
+          </>}
 
           <footer className="footer"><span>© 2026 ECO-MONITOR AI · Project ASIK</span><span><i className="tiny-pulse" /> UI prototype <span className="footer-dot">·</span> Pulau Merak Besar, Banten</span></footer>
         </div>
       </main>
-      {toast && <div className="toast-message"><CheckCircle2 size={17} />{toast}<button onClick={() => setToast('')}><X size={15} /></button></div>}
+      {helpOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setHelpOpen(false); }}>
+        <section className="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+          <div className="help-modal-heading"><span className="help-modal-icon"><BookOpen size={20} /></span><button className="icon-button" onClick={() => setHelpOpen(false)} aria-label="Tutup panduan"><X size={18} /></button></div>
+          <h2 id="help-modal-title">Panduan dashboard</h2>
+          <p>Dashboard ini merupakan prototipe visual ECO-MONITOR AI. Gunakan navigasi untuk menjelajahi simulasi pemantauan.</p>
+          <div className="help-steps">
+            <div><strong>Ringkasan</strong><span>Lihat KPI, tren deteksi, dan peringatan terbaru.</span></div>
+            <div><strong>Peta Sebaran</strong><span>Aktifkan atau nonaktifkan lapisan heatmap, zona, deteksi, dan kamera. Gunakan kontrol zoom untuk menjelajah peta.</span></div>
+            <div><strong>Deteksi AI</strong><span>Cari dan filter riwayat, lalu ekspor hasil ke CSV.</span></div>
+            <div><strong>Peringatan</strong><span>Buat alert uji dan tandai peringatan yang sudah ditangani.</span></div>
+            <div><strong>Perangkat</strong><span>Lihat status simulasi komponen arsitektur.</span></div>
+          </div>
+          <button className="primary-button help-modal-close" onClick={() => setHelpOpen(false)}>Mengerti</button>
+        </section>
+      </div>}
+      {toast && <div className="toast-message"><CheckCircle2 size={17} />{toast}<button onClick={() => setToast('')} aria-label="Tutup pesan"><X size={15} /></button></div>}
     </div>
   );
 }
