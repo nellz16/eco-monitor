@@ -78,14 +78,18 @@ function MapPanel({ compact = false }) {
     });
     map.setView(islandCenter, compact ? 15 : 16);
 
-    const baseLayer = new TileLayer(
-      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      {
-        maxZoom: 20,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-      },
-    );
+    const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY;
+    const cartoTileUrl = cartoApiKey
+      ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoApiKey)}`
+      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+    const baseLayer = new TileLayer(cartoTileUrl, {
+      maxZoom: 20,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+    });
+    
     baseLayer.addTo(map);
     new ZoomControl({ position: 'topright' }).addTo(map);
     new ScaleControl({ position: 'bottomleft', metric: true, imperial: false, maxWidth: 110 }).addTo(map);
