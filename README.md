@@ -92,3 +92,26 @@ Heatmap saat ini merupakan visualisasi demo menggunakan radial gradient yang dip
 ## Catatan deployment WhatsApp Gateway
 
 Jika menggunakan `whatsmeow`, sediakan penyimpanan sesi SQL (SQLite atau PostgreSQL). File SQLite pada local SSD Koyeb tidak boleh dianggap persisten: Koyeb mendokumentasikan bahwa local storage bersifat ephemeral. Kehilangan file sesi dapat mengharuskan pairing ulang WhatsApp. Uptime monitoring juga tidak menjamin koneksi WhatsApp selalu online.
+
+
+## Pembaruan peta survei pesisir (13 November 2026)
+
+Peta kini dipusatkan pada area pesisir permukiman dan tambatan perahu Pulomerak, bukan tepian Pulau Merak Besar. Sembilan titik observasi memakai koordinat GPS yang tercetak pada foto dokumentasi tanggal 11 November 2026.
+
+Foto tersedia di `public/survey/obs-01.jpg` sampai `obs-09.jpg`. Klik marker observasi untuk membuka foto, jenis temuan, indikasi kepadatan visual, waktu, koordinat, dan catatan metode.
+
+Ikon CCTV adalah **titik usulan**, bukan kamera yang sudah terpasang. Panelnya menampilkan foto referensi area dan rencana perangkat; bukan live stream CCTV aktual.
+
+### CARTO API Key
+
+Buat `.env.local` pada root project:
+
+```env
+VITE_CARTO_API_KEY=isi_api_key_kamu
+```
+
+Atau set `VITE_CARTO_API_KEY` di Vercel → Project Settings → Environment Variables, kemudian redeploy. Key browser/public akan tersedia di bundel frontend; batasi domain pemakaiannya melalui pengaturan CARTO. Jika tidak ada key, dashboard menggunakan fallback OpenStreetMap.
+
+### Catatan interpretasi
+
+Klasifikasi kepadatan (tinggi/sedang/rendah) pada foto adalah interpretasi visual awal untuk prototipe. Data tersebut bukan hasil deteksi YOLO, bukan jumlah objek terhitung, dan bukan pengukuran berat atau volume. Untuk penggunaan ilmiah, lakukan anotasi dan pengukuran terpisah.
