@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Activity, AlertOctagon, AlertTriangle, ArrowDownRight, ArrowUpRight,
   Bell, Check, CheckCircle2, ChevronRight, CircleHelp, Clock3, Cpu, Download,
-  ExternalLink, Eye, FileText, Filter, Gauge, Leaf, Map as MapIcon, MapPin,
+  ExternalLink, Eye, FileText, Filter, Gauge, Info, Leaf, Map as MapIcon, MapPin,
   Menu, MessageCircle, MoreHorizontal, Radio, RefreshCw, Search, Send, ShieldCheck,
   Waves, Wifi, X, Zap, Crosshair, Maximize2, Minimize2, BookOpen
 } from 'lucide-react';
@@ -11,7 +11,7 @@ import {
   Tooltip, XAxis, YAxis
 } from 'recharts';
 import { LeafletMap, TileLayer, Circle, CircleMarker, LayerGroup, ZoomControl, ScaleControl, Marker, DivIcon } from 'leaflet';
-import { alertsSeed, detections, islandCenter, trendMonth, trendToday, trendWeek } from './data/mockData';
+import { alertsSeed, detections, coastalCenter, coastalObservations, proposedCameras, trendMonth, trendToday, trendWeek } from './data/mockData';
 
 const navItems = [
   { id: 'overview', label: 'Ringkasan', icon: Activity, section: 'MONITORING' },
@@ -23,8 +23,8 @@ const navItems = [
 
 const pageMeta = {
   overview: ['Ringkasan pemantauan', 'Pantau kondisi sampah laut dari satu tempat.'],
-  map: ['Peta sebaran sampah', 'Jelajahi zona pengamatan dan titik deteksi pada perairan Pulau Merak Besar.'],
-  detections: ['Riwayat deteksi AI', 'Daftar objek sampah yang dikenali oleh model Computer Vision.'],
+  map: ['Peta observasi pesisir', 'Jelajahi dokumentasi sampah di pesisir permukiman dan tambatan perahu Pulomerak.'],
+  detections: ['Riwayat deteksi AI', 'Contoh log deteksi untuk demonstrasi pemantauan sampah pesisir.'],
   alerts: ['Pusat peringatan', 'Pantau kondisi yang membutuhkan perhatian petugas lapangan.'],
   devices: ['Status perangkat', 'Kondisi perangkat pemantauan dan konektivitas sistem.'],
 };
@@ -55,11 +55,79 @@ function MetricCard({ title, value, unit, change, trend = 'up', icon: Icon, tone
   );
 }
 
+function MapFeatureDetail({ feature, onClose }) {
+  if (!feature) return null;
+  const isCamera = feature.kind === 'camera';
+  const item = feature.data;
+  const lat = item.lat;
+  const lng = item.lng;
+  const densityTone = item.density === 'Tinggi' ? 'danger' : item.density === 'Sedang' ? 'warning' : 'success';
+
+  return (
+    <section className="map-feature-detail" aria-live="polite">
+      <div className="map-feature-image-wrap">
+        <img src={item.image} alt={isCamera ? `Foto referensi area ${item.name}` : `Dokumentasi ${item.title}`} />
+        <span className={`map-feature-image-tag ${isCamera ? 'camera-tag' : 'observation-tag'}`}>
+          {isCamera ? 'FOTO REFERENSI AREA' : 'DOKUMENTASI LAPANGAN'}
+        </span>
+      </div>
+      <div className="map-feature-content">
+        <div className="map-feature-title-row">
+          <div>
+            <span className="map-feature-kicker">{isCamera ? 'TITIK CCTV USULAN' : `TITIK OBSERVASI · ${item.id}`}</span>
+            <h4>{isCamera ? item.name : item.title}</h4>
+          </div>
+          <button className="map-feature-close" onClick={onClose} aria-label="Tutup detail" title="Tutup detail"><X size={17} /></button>
+        </div>
+
+        {isCamera ? (
+          <>
+            <div className="map-feature-chips"><Badge tone="info" dot>Belum terpasang</Badge><Badge tone="neutral">Rencana perangkat</Badge></div>
+            <div className="map-feature-data-grid">
+              <div><small>Area cakupan</small><strong>{item.coverage}</strong></div>
+              <div><small>Resolusi target</small><strong>{item.resolution}</strong></div>
+              <div><small>Rencana pemasangan</small><strong>{item.mounting}</strong></div>
+              <div><small>Arah pantau</small><strong>{item.view}</strong></div>
+              <div><small>Koordinat usulan</small><strong>{lat.toFixed(6)}, {lng.toFixed(6)}</strong></div>
+              <div><small>Status streaming</small><strong>Belum tersedia</strong></div>
+            </div>
+            <p className="map-feature-note"><Info size={14} />{item.note} Foto di atas merupakan dokumentasi lapangan sebagai referensi, bukan rekaman CCTV aktual.</p>
+          </>
+        ) : (
+          <>
+            <div className="map-feature-chips">
+              <Badge tone={densityTone} dot>Kepadatan visual {item.density}</Badge>
+              <Badge tone="neutral">{item.area}</Badge>
+            </div>
+            <p className="map-feature-description">{item.description}</p>
+            <div className="map-feature-data-grid">
+              <div><small>Jenis temuan</small><strong>{item.type}</strong></div>
+              <div><small>Komposisi yang terlihat</small><strong>{item.composition}</strong></div>
+              <div><small>Indikasi kepadatan</small><strong>{item.densityNote}</strong></div>
+              <div><small>Jumlah / kadar terukur</small><strong>{item.amount}</strong></div>
+              <div><small>Waktu dokumentasi</small><strong>{item.date} · {item.time}</strong></div>
+              <div><small>Metode / confidence AI</small><strong>{item.confidence}</strong></div>
+              <div><small>Koordinat GPS foto</small><strong>{lat.toFixed(6)}, {lng.toFixed(6)}</strong></div>
+              <div><small>Sumber data</small><strong>{item.source}</strong></div>
+            </div>
+            <p className="map-feature-note"><Info size={14} />{item.sourceNote}. Kepadatan merupakan penilaian visual awal dari foto, bukan hasil hitung model AI atau pengukuran berat/volume sampah.</p>
+          </>
+        )}
+        <a className="map-feature-directions" href={`https://www.google.com/maps?q=${lat},${lng}`} target="_blank" rel="noreferrer">
+          <MapPin size={14} /> Buka koordinat di Google Maps <ExternalLink size={13} />
+        </a>
+      </div>
+    </section>
+  );
+}
+
 function MapPanel({ compact = false }) {
   const frameRef = useRef(null);
   const mapElementRef = useRef(null);
   const mapRef = useRef(null);
   const layerRefs = useRef({});
+  const activeMarkerRef = useRef(null);
+  const [selectedFeature, setSelectedFeature] = useState(null);
   const [visibleLayers, setVisibleLayers] = useState({ heat: true, zones: true, detections: true, cameras: true });
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -67,8 +135,8 @@ function MapPanel({ compact = false }) {
     if (!mapElementRef.current || mapRef.current) return undefined;
 
     const map = new LeafletMap(mapElementRef.current, {
-      minZoom: 13,
-      maxZoom: 19,
+      minZoom: 15,
+      maxZoom: 20,
       zoomSnap: 0.25,
       zoomDelta: 0.5,
       zoomControl: false,
@@ -76,20 +144,22 @@ function MapPanel({ compact = false }) {
       preferCanvas: false,
       attributionControl: true,
     });
-    map.setView(islandCenter, compact ? 15 : 16);
+    map.setView(coastalCenter, compact ? 18 : 18.5);
 
-    const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY;
-    const cartoTileUrl = cartoApiKey
-      ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoApiKey)}`
-      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-
-    const baseLayer = new TileLayer(cartoTileUrl, {
+    // CARTO key is a public browser key; set VITE_CARTO_API_KEY in Vercel.
+    // OSM is a fallback for local preview when the CARTO key is not configured.
+    const cartoKey = import.meta.env.VITE_CARTO_API_KEY || '';
+    const tileUrl = cartoKey
+      ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`
+      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const tileAttribution = cartoKey
+      ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    const baseLayer = new TileLayer(tileUrl, {
       maxZoom: 20,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
+      attribution: tileAttribution,
+      subdomains: cartoKey ? 'abcd' : 'abc',
     });
-    
     baseLayer.addTo(map);
     new ZoomControl({ position: 'topright' }).addTo(map);
     new ScaleControl({ position: 'bottomleft', metric: true, imperial: false, maxWidth: 110 }).addTo(map);
@@ -99,7 +169,6 @@ function MapPanel({ compact = false }) {
     const points = new LayerGroup();
     const cameras = new LayerGroup();
 
-    // Radial-gradient markers create a smooth, lightweight heat surface without a plugin.
     const heatPane = map.createPane('heatmapPane');
     heatPane.style.zIndex = '350';
     const addHotspot = (center, variant, size) => {
@@ -112,30 +181,31 @@ function MapPanel({ compact = false }) {
       new Marker(center, { pane: 'heatmapPane', icon, interactive: false, keyboard: false }).addTo(heat);
     };
 
-    addHotspot([-5.9332, 105.98835], 'high', 270);
-    addHotspot([-5.93445, 105.9901], 'medium', 235);
-    addHotspot([-5.93195, 105.99165], 'low', 205);
+    // Hotspots follow the actual GPS photo clusters along the inhabited shoreline.
+    addHotspot([-5.93737, 106.00024], 'high', compact ? 105 : 150);
+    addHotspot([-5.93613, 106.00035], 'high', compact ? 100 : 142);
+    addHotspot([-5.93731, 105.99998], 'medium', compact ? 86 : 116);
 
     const zoneSpecs = [
-      { name: 'Zona A', label: 'Kepadatan tinggi', center: [-5.9332, 105.98835], radius: 175, color: '#df735b' },
-      { name: 'Zona B', label: 'Kepadatan sedang', center: [-5.93445, 105.9901], radius: 145, color: '#dca54d' },
-      { name: 'Zona C', label: 'Kepadatan rendah', center: [-5.93195, 105.99165], radius: 125, color: '#329f96' },
+      { name: 'Zona A · Pesisir selatan', label: 'Indikasi kepadatan tinggi', center: [-5.93737, 106.00024], radius: 22, color: '#df735b' },
+      { name: 'Zona B · Permukiman utara', label: 'Indikasi kepadatan tinggi', center: [-5.93615, 106.00034], radius: 34, color: '#df735b' },
+      { name: 'Zona C · Tambatan perahu', label: 'Sebaran sedang–rendah', center: [-5.93731, 105.99998], radius: 25, color: '#dca54d' },
     ];
     zoneSpecs.forEach((zone) => {
       const ring = new Circle(zone.center, {
         radius: zone.radius,
         color: zone.color,
-        weight: 1.6,
-        opacity: 0.8,
+        weight: 1.5,
+        opacity: 0.85,
         fillColor: zone.color,
-        fillOpacity: 0.035,
-        dashArray: '5 8',
+        fillOpacity: 0.055,
+        dashArray: '4 6',
       });
-      ring.bindPopup(`<div class="map-popup"><strong>${zone.name}</strong><span>${zone.label}</span><b>Data zona simulasi</b></div>`);
+      ring.bindTooltip(`${zone.name} · ${zone.label}`, { direction: 'top' });
       ring.addTo(zones);
     });
 
-    detections.forEach((point) => {
+    coastalObservations.forEach((point) => {
       const color = point.density === 'Tinggi' ? '#df7058' : point.density === 'Sedang' ? '#dfa84c' : '#2b9f96';
       const marker = new CircleMarker([point.lat, point.lng], {
         radius: 7,
@@ -146,26 +216,43 @@ function MapPanel({ compact = false }) {
         opacity: 1,
         bubblingPointerEvents: false,
       });
-      marker.bindPopup(`<div class="map-popup"><strong>${point.type}</strong><span>${point.id}</span><span>${point.zone} · ${point.time} WIB</span><b>${point.confidence}% confidence</b></div>`);
+      marker.bindTooltip(`${point.id} · ${point.density}`, { direction: 'top', offset: [0, -7] });
+      marker.on('click', () => {
+        if (activeMarkerRef.current) activeMarkerRef.current.setStyle({ radius: 7, weight: 2.5 });
+        marker.setStyle({ radius: 11, weight: 3.5 });
+        activeMarkerRef.current = marker;
+        setSelectedFeature({ kind: 'observation', data: point });
+        map.flyTo([point.lat, point.lng], Math.max(map.getZoom(), compact ? 18 : 18.5), { duration: 0.55 });
+      });
       marker.addTo(points);
     });
 
-    [
-      { name: 'CCTV-01 · Dermaga Utara', latlng: [-5.9321, 105.98985] },
-      { name: 'CCTV-02 · Area Barat', latlng: [-5.93525, 105.9871] },
-    ].forEach((camera) => {
-      const marker = new CircleMarker(camera.latlng, {
-        radius: 8,
-        color: '#ffffff',
-        weight: 2.5,
-        fillColor: '#397cbb',
-        fillOpacity: 1,
+    proposedCameras.forEach((camera) => {
+      const marker = new Marker([camera.lat, camera.lng], {
+        icon: new DivIcon({
+          className: 'camera-marker-shell',
+          html: `<div class="camera-map-marker"><span>◉</span><b>${camera.id.replace('CCTV-', 'C')}</b></div>`,
+          iconSize: [44, 40],
+          iconAnchor: [22, 20],
+        }),
+        keyboard: true,
+        title: `${camera.name} · titik usulan`,
       });
-      marker.bindPopup(`<div class="map-popup"><strong>${camera.name}</strong><span>Status perangkat: aktif (simulasi)</span><b>Kamera pemantauan</b></div>`);
+      marker.bindTooltip(`${camera.id} · titik usulan`, { direction: 'top', offset: [0, -12] });
+      marker.on('click', () => {
+        if (activeMarkerRef.current) {
+          try { activeMarkerRef.current.setStyle({ radius: 7, weight: 2.5 }); } catch { /* camera marker has no circle style */ }
+        }
+        activeMarkerRef.current = null;
+        setSelectedFeature({ kind: 'camera', data: camera });
+        map.flyTo([camera.lat, camera.lng], Math.max(map.getZoom(), compact ? 18 : 18.5), { duration: 0.55 });
+      });
       marker.addTo(cameras);
     });
 
-    layerRefs.current = { heat, zones, points, cameras };
+    map.on('click', () => setSelectedFeature(null));
+
+    layerRefs.current = { heat, zones, detections: points, cameras };
     heat.addTo(map);
     zones.addTo(map);
     points.addTo(map);
@@ -182,6 +269,7 @@ function MapPanel({ compact = false }) {
       map.remove();
       mapRef.current = null;
       layerRefs.current = {};
+      activeMarkerRef.current = null;
     };
   }, [compact]);
 
@@ -194,7 +282,14 @@ function MapPanel({ compact = false }) {
     });
   }, [visibleLayers]);
 
-  const resetView = () => mapRef.current?.setView(islandCenter, compact ? 15 : 16, { animate: true });
+  const resetView = () => {
+    setSelectedFeature(null);
+    if (activeMarkerRef.current) {
+      try { activeMarkerRef.current.setStyle({ radius: 7, weight: 2.5 }); } catch { /* ignore non-circle marker */ }
+      activeMarkerRef.current = null;
+    }
+    mapRef.current?.setView(coastalCenter, compact ? 18 : 18.5, { animate: true });
+  };
   const toggleFullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -212,22 +307,30 @@ function MapPanel({ compact = false }) {
           <div className="map-layer-switches" aria-label="Lapisan peta">
             <button className={visibleLayers.heat ? 'active' : ''} onClick={() => toggleLayer('heat')}><span className="layer-symbol heat-symbol" />Heatmap</button>
             <button className={visibleLayers.zones ? 'active' : ''} onClick={() => toggleLayer('zones')}><span className="layer-symbol zone-symbol" />Zona</button>
-            <button className={visibleLayers.detections ? 'active' : ''} onClick={() => toggleLayer('detections')}><span className="layer-symbol point-symbol" />Deteksi</button>
-            <button className={visibleLayers.cameras ? 'active' : ''} onClick={() => toggleLayer('cameras')}><span className="layer-symbol camera-symbol" />Kamera</button>
+            <button className={visibleLayers.detections ? 'active' : ''} onClick={() => toggleLayer('detections')}><span className="layer-symbol point-symbol" />Foto observasi</button>
+            <button className={visibleLayers.cameras ? 'active' : ''} onClick={() => toggleLayer('cameras')}><span className="layer-symbol camera-symbol" />CCTV usulan</button>
           </div>
           <div className="map-actions">
-            <button className="map-action-button" onClick={resetView} title="Kembalikan tampilan peta"><Crosshair size={14} /><span>Fokus lokasi</span></button>
+            <button className="map-action-button" onClick={resetView} title="Kembalikan tampilan peta"><Crosshair size={14} /><span>Fokus pesisir</span></button>
             <button className="map-action-button map-fullscreen-button" onClick={toggleFullscreen} title={fullscreen ? 'Keluar dari layar penuh' : 'Layar penuh'}>{fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}<span>{fullscreen ? 'Keluar' : 'Perbesar'}</span></button>
           </div>
         </div>
       )}
       <div className={`map-frame ${compact ? 'map-compact' : ''}`} ref={frameRef}>
         <div className="leaflet-map-host" ref={mapElementRef} />
-        <div className="map-demo-stamp"><span className="stamp-dot" /> PETA SIMULASI</div>
+        <div className="map-demo-stamp"><span className="stamp-dot" /> PETA OBSERVASI · DEMO</div>
         {compact && <button className="map-reset-mini" onClick={resetView} aria-label="Reset tampilan peta" title="Reset tampilan peta"><Crosshair size={14} /></button>}
         {fullscreen && <button className="map-fullscreen-exit" onClick={toggleFullscreen} aria-label="Keluar dari layar penuh"><Minimize2 size={14} /> Keluar layar penuh</button>}
       </div>
-      {!compact && <div className="map-map-footer"><span><i className="zone-dot high" />Zona A · Padat</span><span><i className="zone-dot medium" />Zona B · Sedang</span><span><i className="zone-dot low" />Zona C · Rendah</span><small>Marker dan intensitas merupakan data ilustratif.</small></div>}
+      {selectedFeature && <MapFeatureDetail feature={selectedFeature} onClose={() => setSelectedFeature(null)} />}
+      {!compact && (
+        <div className="map-map-footer">
+          <span><i className="zone-dot high" />Zona A · Pesisir selatan</span>
+          <span><i className="zone-dot high" />Zona B · Permukiman utara</span>
+          <span><i className="zone-dot medium" />Zona C · Tambatan perahu</span>
+          <small>Marker observasi berasal dari foto GPS 11 Nov 2026. CCTV merupakan titik usulan.</small>
+        </div>
+      )}
     </div>
   );
 }
@@ -341,23 +444,23 @@ function OverviewPage({ alerts, onViewAll, onResolve, range, setRange, onNavigat
   return (
     <>
       <div className="metrics-grid">
-        <MetricCard title="Total deteksi hari ini" value="248" change="12,8%" trend="up" footnote="vs. hari sebelumnya" icon={Eye} tone="teal" />
-        <MetricCard title="Kamera aktif" value="02" unit="/ 02" change="Semua aktif" trend="up" footnote="kamera pemantauan" icon={Radio} tone="blue" />
-        <MetricCard title="Zona perlu perhatian" value="01" change="Zona A" trend="down" footnote="kepadatan tinggi" icon={AlertTriangle} tone="orange" />
-        <MetricCard title="Confidence rata-rata" value="93,6" unit="%" change="2,4%" trend="up" footnote="model deteksi AI" icon={Gauge} tone="purple" />
+        <MetricCard title="Foto observasi pesisir" value="09" change="Survei GPS" trend="up" footnote="11 November 2026" icon={Eye} tone="teal" />
+        <MetricCard title="Titik CCTV usulan" value="02" change="Belum dipasang" trend="up" footnote="rencana pemantauan" icon={Radio} tone="blue" />
+        <MetricCard title="Titik indikasi padat" value="04" change="Prioritas visual" trend="down" footnote="perlu validasi lanjutan" icon={AlertTriangle} tone="orange" />
+        <MetricCard title="Area observasi" value="03" change="Zona pesisir" trend="up" footnote="permukiman & tambatan perahu" icon={MapPin} tone="purple" />
       </div>
 
       <section className="panel map-panel">
         <div className="panel-heading map-heading">
-          <div><div className="heading-with-status"><h3>Peta pemantauan</h3><Badge tone="success" dot>Area terpantau</Badge></div><p>Perairan Pulau Merak Besar · Kota Cilegon, Banten</p></div>
+          <div><div className="heading-with-status"><h3>Peta pemantauan</h3><Badge tone="success" dot>Area terpantau</Badge></div><p>Pesisir permukiman & tambatan perahu · Pulomerak, Kota Cilegon</p></div>
           <button className="outline-button" onClick={() => onNavigate('map')}>Buka peta lengkap <ExternalLink size={14} /></button>
         </div>
         <MapPanel compact />
         <div className="map-summary">
-          <div className="zone-stat"><span className="zone-dot high"/><div><small>Zona A</small><strong>Padat</strong></div><b>86 <small>objek</small></b></div>
-          <div className="zone-stat"><span className="zone-dot medium"/><div><small>Zona B</small><strong>Sedang</strong></div><b>42 <small>objek</small></b></div>
-          <div className="zone-stat"><span className="zone-dot low"/><div><small>Zona C</small><strong>Rendah</strong></div><b>18 <small>objek</small></b></div>
-          <div className="map-updated"><RefreshCw size={13} /> Update simulasi 11:32 WIB</div>
+          <div className="zone-stat"><span className="zone-dot high"/><div><small>Pesisir selatan</small><strong>Padat</strong></div><b>02 <small>foto</small></b></div>
+          <div className="zone-stat"><span className="zone-dot medium"/><div><small>Tambatan perahu</small><strong>Sedang</strong></div><b>03 <small>foto</small></b></div>
+          <div className="zone-stat"><span className="zone-dot high"/><div><small>Permukiman utara</small><strong>Padat</strong></div><b>04 <small>foto</small></b></div>
+          <div className="map-updated"><RefreshCw size={13} /> Dokumentasi survei 11 Nov 2026</div>
         </div>
       </section>
 
@@ -377,15 +480,18 @@ function MapPage() {
   return (
     <div className="page-stack">
       <div className="metrics-grid map-metrics">
-        <MetricCard title="Total objek di peta" value="146" change="8,2%" trend="up" footnote="hasil agregasi simulasi" icon={MapPin} tone="teal" />
-        <MetricCard title="Zona kepadatan tinggi" value="01" change="Zona A" trend="down" footnote="perlu prioritas" icon={AlertTriangle} tone="orange" />
-        <MetricCard title="Titik kamera" value="02" change="Terpetakan" trend="up" footnote="CCTV-01 dan CCTV-02" icon={Radio} tone="blue" />
+        <MetricCard title="Foto observasi" value="09" change="GPS terlampir" trend="up" footnote="titik dokumentasi" icon={MapPin} tone="teal" />
+        <MetricCard title="Titik indikasi padat" value="04" change="Prioritas visual" trend="down" footnote="perlu verifikasi lapangan" icon={AlertTriangle} tone="orange" />
+        <MetricCard title="CCTV yang diusulkan" value="02" change="Belum dipasang" trend="up" footnote="posisi indikatif" icon={Radio} tone="blue" />
       </div>
       <section className="panel full-map-panel">
-        <div className="panel-heading"><div><h3>Peta interaktif Pulau Merak Besar</h3><p>Klik titik deteksi untuk melihat detail objek dan waktu pengamatan.</p></div><Badge tone="neutral">Koordinat indikatif</Badge></div>
+        <div className="panel-heading">
+          <div><h3>Peta observasi pesisir Pulomerak</h3><p>Klik marker foto observasi atau ikon CCTV untuk membuka foto dan informasi detail.</p></div>
+          <Badge tone="neutral">Koordinat dari survei GPS</Badge>
+        </div>
         <MapPanel />
       </section>
-      <div className="notice-card"><CircleHelp size={18} /><div><strong>Catatan data lokasi</strong><p>Marker dan zona pada peta merupakan koordinat ilustratif untuk kebutuhan demonstrasi. Koordinat aktual perlu diperoleh melalui survei GPS dan kalibrasi kamera sebelum sistem digunakan di lapangan.</p></div></div>
+      <div className="notice-card"><CircleHelp size={18} /><div><strong>Catatan sumber dan interpretasi data</strong><p>Sembilan marker foto menggunakan koordinat GPS yang tercetak pada dokumentasi lapangan tanggal 11 November 2026. Kategori kepadatan merupakan interpretasi visual awal, bukan hasil hitung AI, pengukuran berat, atau volume sampah. Dua ikon CCTV adalah titik pemasangan yang diusulkan; perangkat belum terpasang dan foto pada panel CCTV hanya referensi area, bukan live stream.</p></div></div>
     </div>
   );
 }
@@ -414,7 +520,7 @@ function DetectionsPage() {
         <MetricCard title="Kelas teridentifikasi" value="03" change="3 kategori" trend="up" footnote="kelas sampah" icon={Eye} tone="blue" />
       </div>
       <section className="panel table-panel">
-        <div className="panel-heading"><div><h3>Log deteksi objek</h3><p>Catatan identifikasi sampah dari kamera pemantauan.</p></div><button className="outline-button" onClick={exportCsv}><Download size={15} /> Ekspor CSV</button></div>
+        <div className="panel-heading"><div><h3>Log deteksi objek</h3><p>Contoh log hasil deteksi AI pada area observasi pesisir.</p></div><button className="outline-button" onClick={exportCsv}><Download size={15} /> Ekspor CSV</button></div>
         <div className="table-toolbar"><div className="search-field"><Search size={16} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari ID, jenis sampah, atau zona..." /></div><div className="filter-field"><Filter size={15} /><select value={filter} onChange={(e) => setFilter(e.target.value)}><option>Semua</option><option>Botol plastik</option><option>Kantong plastik</option><option>Styrofoam</option></select></div></div>
         <div className="table-scroll"><table className="data-table detections-table"><thead><tr><th>ID DETEKSI</th><th>WAKTU</th><th>JENIS SAMPAH</th><th>ZONA</th><th>CONFIDENCE</th><th>KEPADATAN</th><th>STATUS</th></tr></thead><tbody>
           {filtered.map((item) => <tr key={item.id}><td className="id-cell">{item.id}</td><td className="time-cell">{item.time}<small>{item.date}</small></td><td><span className="waste-type"><i className={`waste-icon ${item.classKey}`} />{item.type}</span></td><td>{item.zone}</td><td><span className="confidence">{item.confidence.toFixed(1)}%</span></td><td><Badge tone={item.density === 'Tinggi' ? 'danger' : item.density === 'Sedang' ? 'warning' : 'success'}>{item.density}</Badge></td><td><Badge tone={item.status === 'Ditangani' ? 'success' : item.status === 'Perlu ditangani' ? 'danger' : 'neutral'}>{item.status}</Badge></td></tr>)}
@@ -441,8 +547,8 @@ function AlertsPage({ alerts, onResolve, onTestAlert }) {
 
 function DevicesPage() {
   const devices = [
-    { name: 'CCTV-01 · Dermaga Utara', desc: 'Kamera outdoor 4K · Zona A', icon: Radio, status: 'Aktif (simulasi)', tone: 'success', value: 'Streaming demo' },
-    { name: 'CCTV-02 · Area Barat', desc: 'Kamera outdoor 4K · Zona B–C', icon: Radio, status: 'Aktif (simulasi)', tone: 'success', value: 'Streaming demo' },
+    { name: 'CCTV-01 · Pesisir permukiman utara', desc: 'Usulan kamera outdoor 4K · Zona B', icon: Radio, status: 'Titik usulan', tone: 'info', value: 'Belum terpasang' },
+    { name: 'CCTV-02 · Pesisir selatan', desc: 'Usulan kamera outdoor 4K · Zona A', icon: Radio, status: 'Titik usulan', tone: 'info', value: 'Belum terpasang' },
     { name: 'Edge Computing Unit', desc: 'NVIDIA Jetson · YOLOv8', icon: Cpu, status: 'Mode demo', tone: 'info', value: 'AI inference tidak dijalankan' },
     { name: 'MQTT Broker', desc: 'Jalur komunikasi metadata', icon: Waves, status: 'Belum terhubung', tone: 'neutral', value: 'Menunggu integrasi backend' },
     { name: 'WhatsApp Gateway', desc: 'Go + whatsmeow · Koyeb', icon: MessageCircle, status: 'Belum terhubung', tone: 'warning', value: 'Notifikasi disimulasikan' },
@@ -451,7 +557,7 @@ function DevicesPage() {
     <div className="page-stack">
       <div className="metrics-grid map-metrics">
         <MetricCard title="Perangkat terdaftar" value="05" change="Dalam rancangan" trend="up" footnote="komponen sistem" icon={Cpu} tone="blue" />
-        <MetricCard title="Koneksi aktif" value="02" change="Simulasi UI" trend="up" footnote="status tampilan demo" icon={Wifi} tone="teal" />
+        <MetricCard title="Titik CCTV usulan" value="02" change="Belum dipasang" trend="up" footnote="perlu survei penempatan" icon={Wifi} tone="teal" />
         <MetricCard title="Gangguan sistem" value="00" change="Belum ada" trend="down" footnote="belum ada integrasi nyata" icon={ShieldCheck} tone="purple" />
       </div>
       <section className="panel devices-panel"><div className="panel-heading"><div><h3>Inventaris perangkat</h3><p>Status komponen dalam rancangan ECO-MONITOR AI.</p></div><Badge tone="neutral">Mode demonstrasi</Badge></div>
@@ -634,7 +740,7 @@ export default function App() {
             {page === 'devices' && <DevicesPage />}
           </>}
 
-          <footer className="footer"><span>© 2026 ECO-MONITOR AI · Project ASIK</span><span><i className="tiny-pulse" /> UI prototype <span className="footer-dot">·</span> Pulau Merak Besar, Banten</span></footer>
+          <footer className="footer"><span>© 2026 ECO-MONITOR AI · Project ASIK</span><span><i className="tiny-pulse" /> UI prototype <span className="footer-dot">·</span> Pesisir Pulomerak, Banten</span></footer>
         </div>
       </main>
       {helpOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setHelpOpen(false); }}>
