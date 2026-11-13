@@ -1,4 +1,4 @@
-export const islandCenter = [-5.93361, 105.98972];
+export const coastalCenter = [-5.9368808, 106.0001942]; // rerata koordinat 9 foto observasi GPS
 
 export const detections = [
   { id: 'DET-2611-0248', time: '11:32:18', date: '06 Nov 2026', type: 'Botol plastik', classKey: 'bottle', confidence: 96.8, zone: 'Zona A', density: 'Tinggi', status: 'Perlu ditangani', lat: -5.93285, lng: 105.98775 },
@@ -44,4 +44,125 @@ export const trendMonth = [
   { time: '16–20', bottle: 445, bag: 190, foam: 82 },
   { time: '21–25', bottle: 428, bag: 182, foam: 79 },
   { time: '26–30', bottle: 502, bag: 216, foam: 94 },
+];
+
+
+// Dokumentasi lapangan yang dikirim pengguna (GPS Map Camera, 11 November 2026).
+// Indikator kepadatan merupakan interpretasi visual awal, bukan hasil inferensi AI/penimbangan.
+export const coastalObservations = [
+  {
+    id: 'OBS-001', lat: -5.937408, lng: 106.000272, image: '/survey/obs-01.jpg',
+    title: 'Akumulasi sampah di garis pantai berbatu', type: 'Sampah campuran pesisir',
+    composition: 'Kemasan plastik, kantong, dan material campuran yang tampak pada dokumentasi.',
+    density: 'Tinggi', densityNote: 'Penumpukan padat pada batas darat–air',
+    area: 'Pesisir selatan', date: '11 Nov 2026', time: '12:16 WIB',
+    source: 'Foto GPS Map Camera', sourceNote: 'Dokumentasi observasi lapangan',
+    amount: 'Belum dihitung', confidence: 'Belum diuji AI',
+    description: 'Sampah tampak terkumpul di antara bebatuan dan sepanjang garis air.'
+  },
+  {
+    id: 'OBS-002', lat: -5.937412, lng: 106.000219, image: '/survey/obs-02.jpg',
+    title: 'Tumpukan sampah dekat akses pesisir', type: 'Sampah campuran pesisir',
+    composition: 'Sampah kemasan/plastik dan material campuran di sekitar tepi perairan.',
+    density: 'Tinggi', densityNote: 'Akumulasi padat di tepi air',
+    area: 'Pesisir selatan', date: '11 Nov 2026', time: '12:16 WIB',
+    source: 'Foto GPS Map Camera', sourceNote: 'Dokumentasi observasi lapangan',
+    amount: 'Belum dihitung', confidence: 'Belum diuji AI',
+    description: 'Terlihat akumulasi sampah di sekitar kawasan aktivitas warga dan akses perahu.'
+  },
+  {
+    id: 'OBS-003', lat: -5.937343, lng: 106.000083, image: '/survey/obs-03.jpg',
+    title: 'Sampah terapung dekat dermaga', type: 'Sampah terapung campuran',
+    composition: 'Objek ringan/kemasan kecil yang tampak mengapung.',
+    density: 'Sedang', densityNote: 'Sebaran objek terlihat pada permukaan air',
+    area: 'Tambatan perahu tengah', date: '11 Nov 2026', time: '10:15 WIB',
+    source: 'Foto GPS Map Camera', sourceNote: 'Dokumentasi observasi lapangan',
+    amount: 'Belum dihitung', confidence: 'Belum diuji AI',
+    description: 'Beberapa objek terlihat di permukaan air di sekitar struktur dermaga.'
+  },
+  {
+    id: 'OBS-004', lat: -5.937296, lng: 106.000049, image: '/survey/obs-04.jpg',
+    title: 'Sampah terapung di area tambatan perahu', type: 'Sampah terapung campuran',
+    composition: 'Kemasan dan potongan material ringan yang terlihat di permukaan air.',
+    density: 'Sedang', densityNote: 'Objek tersebar di area tambatan',
+    area: 'Tambatan perahu tengah', date: '11 Nov 2026', time: '10:15 WIB',
+    source: 'Foto GPS Map Camera', sourceNote: 'Dokumentasi observasi lapangan',
+    amount: 'Belum dihitung', confidence: 'Belum diuji AI',
+    description: 'Sampah terapung terlihat di sela perahu yang sedang bersandar.'
+  },
+  {
+    id: 'OBS-005', lat: -5.937387, lng: 105.999837, image: '/survey/obs-05.jpg',
+    title: 'Sebaran sampah ringan di permukaan air', type: 'Sampah terapung campuran',
+    composition: 'Beberapa objek kecil yang tampak mengapung.',
+    density: 'Rendah', densityNote: 'Sebaran relatif jarang pada foto',
+    area: 'Tambatan perahu tengah', date: '11 Nov 2026', time: '10:14 WIB',
+    source: 'Foto GPS Map Camera', sourceNote: 'Dokumentasi observasi lapangan',
+    amount: 'Belum dihitung', confidence: 'Belum diuji AI',
+    description: 'Objek sampah tampak tersebar dan tidak membentuk tumpukan besar pada bidang foto.'
+  },
+  {
+    id: 'OBS-006', lat: -5.936012, lng: 106.000186, image: '/survey/obs-06.jpg',
+    title: 'Akumulasi sampah di antara perahu', type: 'Sampah campuran pesisir',
+    composition: 'Sampah campuran di area tepi air dan sekitar perahu.',
+    density: 'Tinggi', densityNote: 'Tumpukan terkonsentrasi di dekat perahu',
+    area: 'Pesisir permukiman utara', date: '11 Nov 2026', time: '09:44 WIB',
+    source: 'Foto GPS Map Camera', sourceNote: 'Dokumentasi observasi lapangan',
+    amount: 'Belum dihitung', confidence: 'Belum diuji AI',
+    description: 'Akumulasi sampah terlihat pada sisi pesisir yang berdekatan dengan perahu dan vegetasi.'
+  },
+  {
+    id: 'OBS-007', lat: -5.936114, lng: 106.000379, image: '/survey/obs-07.jpg',
+    title: 'Tumpukan sampah di area tambatan perahu', type: 'Sampah campuran pesisir',
+    composition: 'Kemasan plastik dan material campuran yang tertahan di sela perahu.',
+    density: 'Tinggi', densityNote: 'Penumpukan padat di tepi perairan',
+    area: 'Pesisir permukiman utara', date: '11 Nov 2026', time: '09:34 WIB',
+    source: 'Foto GPS Map Camera', sourceNote: 'Dokumentasi observasi lapangan',
+    amount: 'Belum dihitung', confidence: 'Belum diuji AI',
+    description: 'Sampah terkumpul di ruang antara perahu yang ditambatkan dan tepian pesisir.'
+  },
+  {
+    id: 'OBS-008', lat: -5.936367, lng: 106.000398, image: '/survey/obs-08.jpg',
+    title: 'Sampah terapung di kolam tambatan', type: 'Sampah terapung campuran',
+    composition: 'Objek kemasan kecil dan potongan material yang terlihat di permukaan air.',
+    density: 'Sedang', densityNote: 'Sebaran objek di beberapa bagian permukaan',
+    area: 'Pesisir permukiman utara', date: '11 Nov 2026', time: '09:33 WIB',
+    source: 'Foto GPS Map Camera', sourceNote: 'Dokumentasi observasi lapangan',
+    amount: 'Belum dihitung', confidence: 'Belum diuji AI',
+    description: 'Sampah terlihat mengapung di kolam kecil di antara perahu dan tepian dermaga.'
+  },
+  {
+    id: 'OBS-009', lat: -5.936588, lng: 106.000325, image: '/survey/obs-09.jpg',
+    title: 'Sebaran sampah di area perahu', type: 'Sampah terapung campuran',
+    composition: 'Beberapa potongan kemasan dan objek ringan di permukaan air.',
+    density: 'Sedang', densityNote: 'Objek tersebar di sekitar perahu',
+    area: 'Pesisir permukiman utara', date: '11 Nov 2026', time: '09:32 WIB',
+    source: 'Foto GPS Map Camera', sourceNote: 'Dokumentasi observasi lapangan',
+    amount: 'Belum dihitung', confidence: 'Belum diuji AI',
+    description: 'Sejumlah objek tampak mengapung di antara perahu yang sedang bersandar.'
+  }
+];
+
+// Posisi CCTV berikut adalah titik usulan untuk prototipe, bukan perangkat yang telah dipasang.
+// Foto yang ditampilkan merupakan foto referensi area, bukan live stream CCTV.
+export const proposedCameras = [
+  {
+    id: 'CCTV-01', name: 'CCTV-01 · Pesisir permukiman utara',
+    lat: -5.93602, lng: 106.00052, status: 'Titik usulan',
+    coverage: 'Area tambatan perahu dan akumulasi sampah sisi utara',
+    resolution: 'Target kamera outdoor 4K',
+    mounting: 'Usulan pemasangan pada tiang/struktur darat yang aman',
+    view: 'Arah pantau ke area tambatan perahu dan garis air',
+    image: '/survey/obs-07.jpg',
+    note: 'Lokasi dan arah kamera masih perlu validasi lapangan serta izin pengelola.'
+  },
+  {
+    id: 'CCTV-02', name: 'CCTV-02 · Pesisir selatan',
+    lat: -5.93728, lng: 106.00042, status: 'Titik usulan',
+    coverage: 'Garis pantai berbatu dan akses perahu sisi selatan',
+    resolution: 'Target kamera outdoor 4K',
+    mounting: 'Usulan pemasangan pada tiang/struktur darat yang aman',
+    view: 'Arah pantau ke garis pantai dan permukaan air dekat permukiman',
+    image: '/survey/obs-01.jpg',
+    note: 'Foto hanya menjadi referensi lokasi pengamatan, bukan cuplikan CCTV aktual.'
+  }
 ];
