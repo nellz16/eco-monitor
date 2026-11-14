@@ -508,12 +508,11 @@ h1 { font: 800 25px 'Manrope', sans-serif; color: #183740; letter-spacing: -.045
 
 /* Soft radial heat spots, anchored to the map as Leaflet markers */
 .map-frame .heat-blob-icon { background: transparent !important; border: 0 !important; }
-.heat-blob { width: 100%; height: 100%; border-radius: 50%; filter: blur(8px); opacity: .9; pointer-events: none; animation: heat-breathe 3.8s ease-in-out infinite alternate; }
+.heat-blob { width: 100%; height: 100%; border-radius: 50%; filter: blur(8px); opacity: .88; pointer-events: none; transform: none !important; }
 .heat-blob-high { background: radial-gradient(circle, rgba(207,61,57,.38) 0%, rgba(224,83,58,.31) 20%, rgba(239,128,61,.22) 42%, rgba(242,177,76,.11) 59%, rgba(242,177,76,0) 76%); }
 .heat-blob-medium { background: radial-gradient(circle, rgba(213,111,52,.31) 0%, rgba(231,144,57,.25) 24%, rgba(240,176,77,.17) 45%, rgba(244,194,105,.08) 62%, rgba(244,194,105,0) 77%); }
 .heat-blob-low { background: radial-gradient(circle, rgba(26,139,132,.29) 0%, rgba(43,163,148,.22) 26%, rgba(94,190,164,.13) 48%, rgba(119,201,178,.06) 64%, rgba(119,201,178,0) 78%); }
-@keyframes heat-breathe { from { transform: scale(.96); opacity: .78; } to { transform: scale(1.04); opacity: .96; } }
-@media (prefers-reduced-motion: reduce) { .heat-blob { animation: none; } }
+
 
 .map-fullscreen-exit { position: absolute; z-index: 690; top: 96px; right: 13px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #d9e5e4; border-radius: 9px; padding: 9px 11px; color: #355f64; background: rgba(255,255,255,.97); box-shadow: 0 4px 14px rgba(20,60,65,.12); font-size: 9px; font-weight: 700; }
 .map-fullscreen-exit:hover { background: #eaf7f4; }
@@ -592,4 +591,88 @@ h1 { font: 800 25px 'Manrope', sans-serif; color: #183740; letter-spacing: -.045
   .map-feature-data-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .map-widget-compact .map-feature-detail { grid-template-columns: 104px minmax(0, 1fr); }
   .map-widget-compact .map-feature-image-wrap, .map-widget-compact .map-feature-image-wrap img { min-height: 120px; max-height: 140px; }
+}
+
+
+/* MarLit Vision: grouped field markers, product identification and water quality page */
+.observation-cluster-shell { background: transparent !important; border: 0 !important; }
+.observation-cluster-marker {
+  width: 46px; height: 42px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 2px solid #fff; border-radius: 14px; color: #fff; line-height: 1;
+  box-shadow: 0 4px 14px rgba(31,61,66,.22); font-family: 'DM Sans',sans-serif;
+}
+.observation-cluster-marker strong { font-size: 15px; font-weight: 800; }
+.observation-cluster-marker small { font-size: 7px; font-weight: 800; letter-spacing: .09em; margin-top: 3px; }
+.observation-cluster-marker.cluster-high { background: linear-gradient(145deg,#e37b61,#c95045); }
+.observation-cluster-marker.cluster-medium { background: linear-gradient(145deg,#e7b45e,#cb8c38); }
+.map-feature-image-wrap.actual-product-image { aspect-ratio: 16 / 9; min-height: 190px; background: #f5f7f7; }
+.map-feature-image-wrap.actual-product-image img { min-height: 190px; max-height: 250px; object-fit: cover; object-position: center top; }
+.camera-model-title { color: #24464c; font-size: 11px; font-weight: 800; line-height: 1.4; }
+.camera-reference-row { display: flex; align-items: center; gap: 10px; padding: 8px; background: #f7faf9; border: 1px solid #e8efee; border-radius: 9px; }
+.camera-reference-row img { width: 72px; height: 54px; object-fit: cover; border-radius: 6px; }
+.camera-reference-row span { color: #7b8f92; font-size: 9px; line-height: 1.5; }
+.camera-source-links { display: flex; gap: 12px; flex-wrap: wrap; }
+.camera-source-links a { display: inline-flex; align-items: center; gap: 5px; color: #287d75; font-size: 9px; font-weight: 750; text-decoration: none; }
+.camera-source-links a:hover { text-decoration: underline; }
+.observation-gallery { display: flex; gap: 7px; overflow-x: auto; padding: 1px 1px 5px; }
+.observation-gallery button { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; padding: 4px 7px 4px 4px; background: #fff; border: 1px solid #e2ebea; border-radius: 8px; color: #698185; font-size: 8px; font-weight: 750; }
+.observation-gallery button.selected { border-color: #5ab3a7; background: #eff9f6; color: #23776e; }
+.observation-gallery img { width: 36px; height: 29px; border-radius: 5px; object-fit: cover; }
+.camera-product-panel { overflow: hidden; }
+.camera-product-layout { display: grid; grid-template-columns: minmax(240px, 42%) minmax(0,1fr); gap: 22px; align-items: center; }
+.camera-product-photo { display: block; position: relative; aspect-ratio: 16/9; overflow: hidden; border: 1px solid #e4ebeb; border-radius: 12px; background: #f8f9f9; }
+.camera-product-photo img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center top; }
+.camera-product-photo span { position: absolute; left: 9px; bottom: 9px; padding: 6px 8px; border-radius: 6px; color: #fff; background: rgba(13,39,45,.82); font-size: 8px; font-weight: 750; }
+.camera-product-info h4 { margin: 6px 0 8px; color: #1c3e46; font: 800 16px 'Manrope',sans-serif; }
+.camera-product-info p { color: #7b8f92; font-size: 10px; line-height: 1.6; margin-bottom: 10px; }
+.camera-brand-label { color: #26897f; font-size: 8px; letter-spacing: .13em; font-weight: 850; }
+.camera-product-specs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.camera-product-specs span { padding: 5px 7px; border: 1px solid #e5efed; border-radius: 6px; color: #557477; background: #f7fbfa; font-size: 8px; font-weight: 750; }
+.water-preview-panel { display: grid; gap: 12px; }
+.water-preview-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.water-preview-metric { min-width: 0; position: relative; display: grid; gap: 6px; padding: 14px; border: 1px solid #e8efee; border-radius: 11px; background: linear-gradient(145deg,#fbfdfd,#f6faf9); }
+.water-metric-icon { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 9px; color: #188d83; background: #e8f6f2; }
+.water-preview-metric small { color: #8a9b9e; font-size: 9px; }
+.water-preview-metric strong { color: #1a4149; font: 800 27px 'Manrope',sans-serif; }
+.water-preview-metric strong em { font: 600 11px 'DM Sans',sans-serif; color: #849699; }
+.water-preview-scale { color: #8b9b9e; font-size: 8px; }
+.water-preview-note { display: flex; align-items: flex-start; gap: 7px; color: #84979a; font-size: 9px; line-height: 1.5; margin: 0; }
+.water-preview-note svg { flex: 0 0 auto; color: #3a9990; }
+.quality-page { gap: 16px; }
+.quality-reference-panel { padding: 17px 19px; }
+.quality-reference-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.quality-reference-heading h3 { margin: 9px 0 5px; color: #294850; font-size: 13px; font-weight: 800; }
+.quality-reference-heading p { max-width: 780px; margin: 0; color: #829397; font-size: 9px; line-height: 1.55; }
+.quality-reference-heading > a { display: inline-flex; align-items: center; gap: 5px; color: #267d75; white-space: nowrap; font-size: 9px; font-weight: 750; text-decoration: none; }
+.quality-reference-values { display: flex; gap: 10px; margin-top: 14px; }
+.quality-reference-values > div { display: grid; gap: 4px; min-width: 145px; padding: 9px 12px; border-radius: 8px; background: #f4faf8; border: 1px solid #e4f0ec; }
+.quality-reference-values small { color: #87999c; font-size: 8px; }
+.quality-reference-values strong { color: #247b70; font: 800 16px 'Manrope',sans-serif; }
+.quality-chart-grid { align-items: stretch; }
+.quality-chart-panel { min-width: 0; }
+.quality-chart { height: 235px; width: 100%; margin: 4px 0 8px; }
+.quality-chart-legend { display: flex; gap: 13px; flex-wrap: wrap; margin: 4px 0 12px; color: #849699; font-size: 8px; }
+.quality-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-line { width: 19px; height: 0; display: inline-block; border-top: 2px solid; }
+.ph-line { border-color: #159b91; }
+.do-line { border-color: #568eb9; }
+.threshold-line { border-color: #d27b43; border-top-style: dashed; }
+.legend-band { width: 15px; height: 9px; display: inline-block; border-radius: 2px; background: #d8f0e8; border: 1px solid #b3dfd1; }
+.quality-explain { padding: 11px 12px; border: 1px solid #e9f0ef; border-radius: 9px; background: #f8fbfa; }
+.quality-explain strong { display: block; color: #416268; font-size: 9px; margin-bottom: 5px; }
+.quality-explain p { color: #819497; font-size: 8.5px; line-height: 1.6; margin: 0; }
+@media (max-width: 900px) {
+  .camera-product-layout { grid-template-columns: 1fr; }
+  .camera-product-photo { max-width: 100%; }
+  .quality-reference-heading { flex-direction: column; }
+}
+@media (max-width: 700px) {
+  .water-preview-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .water-preview-metric { padding: 10px; }
+  .water-preview-metric strong { font-size: 23px; }
+  .quality-chart { height: 210px; }
+  .quality-reference-values { width: 100%; }
+  .quality-reference-values > div { min-width: 0; flex: 1; }
+  .map-feature-detail { grid-template-columns: 1fr; }
+  .camera-reference-row img { width: 65px; }
 }
