@@ -142,11 +142,55 @@ export const coastalObservations = [
   }
 ];
 
+
+
+// Foto produk yang dirujuk untuk model kamera yang dipilih. Sumber gambar menampilkan
+// dua varian; varian atas berlabel "With -R Model" adalah varian dengan wiper (IZHRS).
+export const hikvisionCamera = {
+  model: 'Hikvision DS-2XC6686G0/P-IZHRS (2.8–12 mm)',
+  productImage: 'https://www.dssl.ru/upload/iblock/530/DS_2XC6686G0_P_IZHRS_2.8_12_4.jpg',
+  productPage: 'https://securitylab.hikvision.com/en/products/IP-Products/Explosion-Proof---Anti-corrosion-Series/Anti-corrosion-Series/ds-2xc6686g0-p-izh-r-s/',
+  datasheet: 'https://assets.hikvision.com/prd/normal/all/doc/m000061886/DS-2XC6686G0_P-IZHRS_Datasheet_20260304.pdf',
+};
+
+// Tiga klaster foto menghindari marker saling menutupi pada koordinat yang sangat berdekatan.
+// Koordinat klaster adalah titik tengah foto anggota; setiap foto tetap menyimpan GPS aslinya.
+export const coastalObservationClusters = [
+  {
+    id: 'CL-01', lat: -5.937410, lng: 106.000246, label: 'Pesisir selatan', density: 'Tinggi',
+    description: 'Dua dokumentasi menunjukkan akumulasi sampah pada garis pantai dan akses pesisir.',
+    observations: coastalObservations.filter((item) => ['OBS-001', 'OBS-002'].includes(item.id)),
+  },
+  {
+    id: 'CL-02', lat: -5.937342, lng: 105.999990, label: 'Tambatan perahu tengah', density: 'Sedang',
+    description: 'Tiga dokumentasi memperlihatkan sampah terapung di sekitar area tambatan perahu.',
+    observations: coastalObservations.filter((item) => ['OBS-003', 'OBS-004', 'OBS-005'].includes(item.id)),
+  },
+  {
+    id: 'CL-03', lat: -5.936270, lng: 106.000322, label: 'Pesisir permukiman utara', density: 'Tinggi',
+    description: 'Empat dokumentasi menunjukkan akumulasi dan sebaran sampah di sela perahu dan tepi permukiman.',
+    observations: coastalObservations.filter((item) => ['OBS-006', 'OBS-007', 'OBS-008', 'OBS-009'].includes(item.id)),
+  },
+];
+
+// Deret pH dan dissolved oxygen (DO) di bawah ini merupakan data simulasi untuk demonstrasi grafik,
+// bukan hasil pengukuran probe kualitas air di Pulomerak. Acuan antarmuka: peruntukan Wisata Bahari.
+export const waterQualityReadings = [
+  { time: '07.00', ph: 7.8, do: 6.4 },
+  { time: '09.00', ph: 7.9, do: 6.2 },
+  { time: '11.00', ph: 8.0, do: 6.0 },
+  { time: '13.00', ph: 8.1, do: 5.7 },
+  { time: '15.00', ph: 7.9, do: 5.5 },
+  { time: '17.00', ph: 7.8, do: 5.8 },
+  { time: '19.00', ph: 7.9, do: 6.1 },
+];
+
 // Posisi CCTV berikut adalah titik usulan untuk prototipe, bukan perangkat yang telah dipasang.
 // Foto yang ditampilkan merupakan foto referensi area, bukan live stream CCTV.
 export const proposedCameras = [
   {
     id: 'CCTV-01', name: 'CCTV-01 · Pesisir permukiman utara',
+    productModel: hikvisionCamera.model, productImage: hikvisionCamera.productImage, productPage: hikvisionCamera.productPage, datasheet: hikvisionCamera.datasheet,
     lat: -5.93602, lng: 106.00052, status: 'Titik usulan',
     coverage: 'Area tambatan perahu dan akumulasi sampah sisi utara',
     resolution: 'Target kamera outdoor 4K',
@@ -157,6 +201,7 @@ export const proposedCameras = [
   },
   {
     id: 'CCTV-02', name: 'CCTV-02 · Pesisir selatan',
+    productModel: hikvisionCamera.model, productImage: hikvisionCamera.productImage, productPage: hikvisionCamera.productPage, datasheet: hikvisionCamera.datasheet,
     lat: -5.93728, lng: 106.00042, status: 'Titik usulan',
     coverage: 'Garis pantai berbatu dan akses perahu sisi selatan',
     resolution: 'Target kamera outdoor 4K',
