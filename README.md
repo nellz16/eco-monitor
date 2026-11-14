@@ -1,117 +1,60 @@
-# ECO-MONITOR AI — Dashboard Prototype
+# MarLit Vision — Dashboard Prototype
 
-Frontend demo dashboard untuk proyek ASIK ECO-MONITOR AI. Dibangun dengan React + Vite, **Leaflet 2.0.0-beta.2 (native ESM)**, Recharts, dan Lucide React.
+Frontend demo dashboard untuk proyek MarLit Vision: Sistem Pemantauan Sampah Laut Real-Time Berbasis Edge Computer Vision di Pesisir Dermaga Penyeberangan Wisata Pulau Merak. Dibangun dengan React + Vite, Leaflet 2.0.0-beta.4 (native ESM), Recharts, dan Lucide React.
 
-> **Penting:** seluruh angka, marker, status perangkat, kepadatan heatmap, dan notifikasi di proyek ini adalah data simulasi. Dashboard belum tersambung ke CCTV, YOLO, MQTT, database, atau WhatsApp Gateway.
+> **Penting:** seluruh angka, marker klaster, status perangkat, grafik pH/DO, dan notifikasi merupakan data simulasi/dokumentasi survei. Dashboard belum terhubung ke CCTV, YOLO, MQTT, database, probe kualitas air, atau WhatsApp Gateway.
 
 ## Fitur demo
 
-- Ringkasan KPI pemantauan, tren deteksi, komposisi sampah, dan peringatan.
-- Peta interaktif Perairan Pulau Merak Besar dengan heat spot radial, zona, marker deteksi, dan marker kamera.
-- Toggle lapisan Heatmap, Zona, Deteksi, dan Kamera.
-- Kontrol zoom Leaflet di kanan atas, fokus ulang lokasi, dan fullscreen.
-- Riwayat deteksi dengan pencarian, filter, serta ekspor CSV.
-- Pusat peringatan dengan aksi tandai ditangani dan tombol membuat alert uji.
-- Halaman status perangkat dan arsitektur integrasi.
-- Skeleton shimmer saat aplikasi pertama dibuka, berpindah halaman, dan refresh.
-- Layout responsif untuk desktop dan ponsel.
+- Ringkasan KPI dan dokumentasi survei pesisir Pulomerak.
+- Peta interaktif dengan 3 klaster foto GPS agar marker yang sangat berdekatan tidak saling menutupi.
+- Klik klaster untuk melihat galeri foto dan metadata tiap foto; koordinat foto asli tetap ditampilkan.
+- Titik CCTV usulan dengan foto produk model Hikvision DS-2XC6686G0/P-IZHRS (2.8–12 mm), tautan produk resmi dan datasheet.
+- Halaman kualitas air dengan grafik pH dan dissolved oxygen (DO), acuan Wisata Bahari PP 22/2021 Lampiran VIII, serta penjelasan cara membaca grafik.
+- Riwayat deteksi sampah dengan pencarian, filter, dan ekspor CSV.
+- Pusat peringatan dengan aksi simulasi.
+- Inventaris perangkat, skeleton shimmer, dan layout responsif.
 
-## Versi peta
+## Versi Leaflet
 
-Proyek ini menggunakan Leaflet **2.0.0-beta.2**, dirilis sebagai pre-release pada 6 November 2026. Integrasi dilakukan langsung melalui class ESM Leaflet, bukan React Leaflet, agar tidak bergantung pada wrapper React yang belum dipastikan kompatibel dengan Leaflet 2.
+Menggunakan `leaflet@2.0.0-beta.4`, versi pre-release yang memperbaiki jitter tiles/markers/overlays saat `flyTo` dan meningkatkan performa animated panning. Integrasi memakai class ESM (`LeafletMap`, `Marker`, `TileLayer`, dan lainnya), bukan React Leaflet. Leaflet 2 masih beta; evaluasi kembali stabilitas/kompatibilitas sebelum penggunaan produksi.
 
-Perubahan API mengikuti panduan migrasi Leaflet 1.x ke 2.0:
+## Perbaikan marker peta
 
-- `LeafletMap` digunakan sebagai pengganti factory `L.map()`.
-- `TileLayer`, `Circle`, `CircleMarker`, `Marker`, `DivIcon`, `LayerGroup`, `ZoomControl`, dan `ScaleControl` diimpor sebagai named exports.
-- CSS Leaflet dimuat melalui `leaflet/styles.css`.
+Sembilan foto survei dikelompokkan menjadi tiga klaster yang koordinat tampilannya merupakan titik tengah anggota klaster. Setiap foto tetap mempertahankan koordinat GPS aslinya pada panel detail. Marker tidak menggunakan `flyTo` otomatis saat dipilih, inertia dimatikan, dan animasi zoom/fade marker dinonaktifkan untuk mengurangi lompatan visual saat peta digeser atau di-zoom. Tombol fokus menggunakan `setView` tanpa animasi.
 
-Leaflet 2.0 masih beta; untuk implementasi produksi, evaluasi kompatibilitas plugin, browser, dan stabilitas rilis sebelum mengunci versi.
+## Kualitas air
 
-## Menjalankan secara lokal
+Data pH dan DO pada `src/data/mockData.js` adalah nilai simulasi. Acuan UI dipilih sebagai Wisata Bahari dari Lampiran VIII PP RI No. 22 Tahun 2021: pH 7,0–8,5 dan DO >5 mg/L. Jika peruntukan resmi lokasi masuk kategori Pelabuhan, acuan pH pada lampiran adalah 6,5–8,5 dan kolom DO tidak mencantumkan nilai numerik. Jangan menganggap grafik sebagai hasil ukur atau penetapan status mutu air aktual.
 
-Gunakan Node.js 20 LTS atau versi stabil yang kompatibel.
+## Foto kamera
+
+Foto produk yang digunakan adalah gambar listing model DS-2XC6686G0/P-IZHRS dari sumber DSSL yang menampilkan varian **With -R Model** (dengan wiper) di bagian atas. Verifikasi model dan spesifikasi melalui halaman produk Hikvision serta datasheet yang ditautkan di dashboard.
+
+## Menjalankan lokal
 
 ```bash
 npm install
 npm run dev
 ```
 
-Buka alamat lokal yang ditampilkan Vite, biasanya `http://localhost:5173`.
-
-Untuk menguji hasil production build:
+Production build:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## Deploy ke Vercel Hobby
+## Deploy Vercel
 
-1. Buat repository GitHub dan upload seluruh isi folder ini.
-2. Di Vercel pilih **Add New → Project**, lalu import repository.
-3. Framework preset: **Vite**.
-4. Build command: `npm run build`.
-5. Output directory: `dist`.
-6. Klik Deploy.
+- Framework: Vite
+- Build command: `npm run build`
+- Output directory: `dist`
+- Environment variable: `VITE_CARTO_API_KEY` bila menggunakan CARTO. Jika kosong, map menggunakan fallback OpenStreetMap.
 
-Tidak memerlukan environment variables untuk versi demo ini.
+## Sumber data
 
-## Mengganti data simulasi
+- `src/data/mockData.js`: demo detections, alert, chart, foto observasi GPS, klaster observasi, kamera usulan, dan pH/DO simulasi.
+- `public/survey/obs-01.jpg`–`obs-09.jpg`: sembilan foto survei pengguna tanggal 11 November 2026.
 
-Data contoh terletak di:
-
-- `src/data/mockData.js`
-
-Koordinat pusat peta dan marker pada file tersebut masih koordinat ilustratif. Pastikan menggantinya dengan hasil survei/kalibrasi lapangan sebelum menyebutnya sebagai koordinat deteksi nyata.
-
-## Integrasi backend di tahap berikutnya
-
-Arsitektur integrasi yang direncanakan:
-
-```text
-CCTV / Edge Device
-       │
-       ▼
- YOLO / Object Tracking
-       │ metadata
-       ▼
- MQTT Broker → Backend API
-                    │
-                    ├── Database (opsional sesuai kebutuhan)
-                    ├── REST API / WebSocket → Vercel Dashboard
-                    └── WhatsApp Gateway (Go + whatsmeow) di Koyeb
-```
-
-Untuk saat ini frontend masih membaca data statis dari `mockData.js`. Ketika API siap, ganti sumber data tersebut dengan `fetch()` ke backend dan gunakan WebSocket/SSE bila dibutuhkan pembaruan real-time.
-
-## Catatan heatmap
-
-Heatmap saat ini merupakan visualisasi demo menggunakan radial gradient yang diposisikan pada koordinat ilustratif. Ini bukan hasil interpolasi spasial dari sensor atau data deteksi aktual. Nilai kepadatan perlu dihitung dan divalidasi dari data lapangan sebelum digunakan untuk analisis ilmiah.
-
-## Catatan deployment WhatsApp Gateway
-
-Jika menggunakan `whatsmeow`, sediakan penyimpanan sesi SQL (SQLite atau PostgreSQL). File SQLite pada local SSD Koyeb tidak boleh dianggap persisten: Koyeb mendokumentasikan bahwa local storage bersifat ephemeral. Kehilangan file sesi dapat mengharuskan pairing ulang WhatsApp. Uptime monitoring juga tidak menjamin koneksi WhatsApp selalu online.
-
-
-## Pembaruan peta survei pesisir (13 November 2026)
-
-Peta kini dipusatkan pada area pesisir permukiman dan tambatan perahu Pulomerak, bukan tepian Pulau Merak Besar. Sembilan titik observasi memakai koordinat GPS yang tercetak pada foto dokumentasi tanggal 11 November 2026.
-
-Foto tersedia di `public/survey/obs-01.jpg` sampai `obs-09.jpg`. Klik marker observasi untuk membuka foto, jenis temuan, indikasi kepadatan visual, waktu, koordinat, dan catatan metode.
-
-Ikon CCTV adalah **titik usulan**, bukan kamera yang sudah terpasang. Panelnya menampilkan foto referensi area dan rencana perangkat; bukan live stream CCTV aktual.
-
-### CARTO API Key
-
-Buat `.env.local` pada root project:
-
-```env
-VITE_CARTO_API_KEY=isi_api_key_kamu
-```
-
-Atau set `VITE_CARTO_API_KEY` di Vercel → Project Settings → Environment Variables, kemudian redeploy. Key browser/public akan tersedia di bundel frontend; batasi domain pemakaiannya melalui pengaturan CARTO. Jika tidak ada key, dashboard menggunakan fallback OpenStreetMap.
-
-### Catatan interpretasi
-
-Klasifikasi kepadatan (tinggi/sedang/rendah) pada foto adalah interpretasi visual awal untuk prototipe. Data tersebut bukan hasil deteksi YOLO, bukan jumlah objek terhitung, dan bukan pengukuran berat atau volume. Untuk penggunaan ilmiah, lakukan anotasi dan pengukuran terpisah.
+Foto-foto lapangan menggambarkan kondisi yang terlihat pada saat dokumentasi; kategorisasi kepadatan di dashboard merupakan interpretasi visual awal, bukan hitung AI atau penimbangan. Titik CCTV masih usulan.
