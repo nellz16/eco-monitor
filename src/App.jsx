@@ -1,32 +1,49 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   Activity, AlertOctagon, AlertTriangle, ArrowDownRight, ArrowUpRight,
   Bell, Check, CheckCircle2, ChevronRight, CircleHelp, Clock3, Cpu, Download,
   ExternalLink, Eye, FileText, Filter, Gauge, Info, Leaf, Map as MapIcon, MapPin,
   Menu, MessageCircle, MoreHorizontal, Radio, RefreshCw, Search, Send, ShieldCheck,
-  Waves, Wifi, X, Zap, Crosshair, Maximize2, Minimize2, BookOpen, Droplets
+  Waves, Wifi, X, Zap, Crosshair, Maximize2, Minimize2, BookOpen
 } from 'lucide-react';
 import {
   Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
-  Tooltip, XAxis, YAxis, Line, LineChart, ReferenceArea, ReferenceLine
+  Tooltip, XAxis, YAxis
 } from 'recharts';
 import { LeafletMap, TileLayer, Circle, LayerGroup, ZoomControl, ScaleControl, Marker, DivIcon } from 'leaflet';
-import { alertsSeed, detections, coastalCenter, coastalObservationClusters, proposedCameras, trendMonth, trendToday, trendWeek, waterQualityReadings } from './data/mockData';
+import { alertsSeed, detections, coastalCenter, coastalObservationClusters, proposedCameras, trendMonth, trendToday, trendWeek } from './data/mockData';
 
 const navItems = [
   { id: 'overview', label: 'Ringkasan', icon: Activity, section: 'MONITORING' },
   { id: 'map', label: 'Peta Sebaran', icon: MapIcon },
   { id: 'detections', label: 'Deteksi Sampah', icon: Eye, count: '08' },
-  { id: 'quality', label: 'Kualitas Air', icon: Droplets },
   { id: 'alerts', label: 'Peringatan', icon: Bell, count: '2', alert: true },
   { id: 'devices', label: 'Perangkat', icon: Radio, section: 'SISTEM' },
 ];
 
+const PhotoLightboxContext = createContext(() => {});
+
+function PhotoZoomButton({ src, alt, className = '', imgClassName = '', children }) {
+  const openPhoto = useContext(PhotoLightboxContext);
+  return (
+    <button
+      type="button"
+      className={`photo-zoom-button ${className}`}
+      onClick={() => openPhoto({ src, alt })}
+      aria-label={`Perbesar foto: ${alt}`}
+      title="Lihat foto ukuran penuh"
+    >
+      <img src={src} alt={alt} className={imgClassName} loading="lazy" />
+      {children}
+      <span className="photo-zoom-indicator" aria-hidden="true"><Maximize2 size={13} /></span>
+    </button>
+  );
+}
+
 const pageMeta = {
-  overview: ['Ringkasan pemantauan', 'Pantau sampah laut dan parameter kualitas air dari satu tempat.'],
+  overview: ['Ringkasan pemantauan', 'Pantau sampah laut di kawasan pesisir dan tambatan perahu Pulomerak.'],
   map: ['Peta observasi pesisir', 'Jelajahi dokumentasi sampah di pesisir permukiman dan tambatan perahu Pulomerak.'],
   detections: ['Riwayat deteksi sampah', 'Contoh log deteksi untuk demonstrasi pemantauan sampah pesisir.'],
-  quality: ['Kualitas air', 'Pantau parameter pH dan dissolved oxygen (DO) sebagai informasi pendukung kondisi perairan.'],
   alerts: ['Pusat peringatan', 'Pantau kondisi yang membutuhkan perhatian petugas lapangan.'],
   devices: ['Status perangkat', 'Kondisi perangkat pemantauan dan konektivitas sistem.'],
 };
@@ -58,6 +75,7 @@ function MetricCard({ title, value, unit, change, trend = 'up', icon: Icon, tone
 }
 
 function MapFeatureDetail({ feature, onClose }) {
+  const openPhoto = useContext(PhotoLightboxContext);
   const [activeObservationIndex, setActiveObservationIndex] = useState(0);
   if (!feature) return null;
   const isCamera = feature.kind === 'camera';
@@ -74,7 +92,11 @@ function MapFeatureDetail({ feature, onClose }) {
   return (
     <section className={`map-feature-detail ${isCamera ? 'camera-feature-detail' : ''}`} aria-live="polite">
       <div className={`map-feature-image-wrap ${isCamera ? 'actual-product-image' : ''}`}>
-        <img src={heroImage} alt={isCamera ? item.productModel : `Dokumentasi ${displayItem.title}`} />
+        <PhotoZoomButton
+          src={heroImage}
+          alt={isCamera ? item.productModel : `Dokumentasi ${displayItem.title}`}
+          className="map-feature-photo-zoom"
+        />
         <span className={`map-feature-image-tag ${isCamera ? 'camera-tag' : 'observation-tag'}`}>
           {isCamera ? 'FOTO PRODUK HIKVISION · VARIAN -R' : isGroup ? `DOKUMENTASI ${activeObservationIndex + 1}/${observations.length}` : 'DOKUMENTASI LAPANGAN'}
         </span>
@@ -104,7 +126,7 @@ function MapFeatureDetail({ feature, onClose }) {
             </div>
             <p className="map-feature-note"><Info size={14} />{item.note} Foto yang ditampilkan adalah foto produk model yang dipilih, bukan perangkat yang sudah terpasang. Varian IZHRS memiliki wiper (-R).</p>
             <div className="camera-reference-row">
-              <img src={item.image} alt={`Referensi lokasi ${item.name}`} />
+              <PhotoZoomButton src={item.image} alt={`Referensi lokasi ${item.name}`} className="camera-reference-photo" />
               <span>Foto lokasi survei sebagai referensi penempatan CCTV.</span>
             </div>
             <div className="camera-source-links">
@@ -122,9 +144,10 @@ function MapFeatureDetail({ feature, onClose }) {
             {isGroup && (
               <div className="observation-gallery" aria-label="Pilih dokumentasi dalam klaster">
                 {observations.map((obs, index) => (
-                  <button key={obs.id} className={activeObservationIndex === index ? 'selected' : ''} onClick={() => setActiveObservationIndex(index)}>
-                    <img src={obs.image} alt={obs.title} />
+                  <button key={obs.id} className={activeObservationIndex === index ? 'selected' : ''} onClick={() => { setActiveObservationIndex(index); openPhoto({ src: obs.image, alt: obs.title }); }} title={`Perbesar ${obs.title}`}>
+                    <img src={obs.image} alt={obs.title} loading="lazy" />
                     <span>{obs.id}</span>
+                    <i className="gallery-zoom-hint" aria-hidden="true"><Maximize2 size={11} /></i>
                   </button>
                 ))}
               </div>
@@ -408,85 +431,6 @@ function ChartCard({ range, setRange }) {
 }
 
 
-function WaterQualityPreview({ onNavigate }) {
-  const latest = waterQualityReadings[waterQualityReadings.length - 1];
-  return (
-    <section className="panel water-preview-panel">
-      <div className="panel-heading">
-        <div><h3>Kualitas air pesisir</h3><p>Parameter pendukung: pH dan oksigen terlarut (DO)</p></div>
-        <button className="text-button" onClick={() => onNavigate('quality')}>Lihat grafik <ChevronRight size={15} /></button>
-      </div>
-      <div className="water-preview-grid">
-        <div className="water-preview-metric ph-metric"><span className="water-metric-icon"><Droplets size={17}/></span><small>pH terakhir · simulasi</small><strong>{latest.ph.toFixed(1)}</strong><Badge tone="success">Dalam rentang acuan</Badge><span className="water-preview-scale">Acuan wisata bahari: 7,0–8,5</span></div>
-        <div className="water-preview-metric do-metric"><span className="water-metric-icon"><Waves size={17}/></span><small>DO terakhir · simulasi</small><strong>{latest.do.toFixed(1)} <em>mg/L</em></strong><Badge tone="success">Di atas acuan minimum</Badge><span className="water-preview-scale">Acuan wisata bahari: &gt;5 mg/L</span></div>
-      </div>
-      <p className="water-preview-note"><Info size={14}/>Nilai ini adalah data contoh untuk demonstrasi grafik, bukan hasil pengukuran lapangan.</p>
-    </section>
-  );
-}
-
-function WaterQualityPage() {
-  const latest = waterQualityReadings[waterQualityReadings.length - 1];
-  const phInRange = latest.ph >= 7 && latest.ph <= 8.5;
-  const doAbove = latest.do > 5;
-  return (
-    <div className="page-stack quality-page">
-      <div className="metrics-grid map-metrics quality-metrics">
-        <MetricCard title="pH terakhir" value={latest.ph.toFixed(1)} change={phInRange ? 'Dalam rentang acuan' : 'Di luar rentang acuan'} trend={phInRange ? 'up' : 'down'} footnote="Acuan wisata bahari 7,0–8,5" icon={Droplets} tone="teal" />
-        <MetricCard title="DO terakhir" value={latest.do.toFixed(1)} unit="mg/L" change={doAbove ? 'Di atas batas acuan' : 'Di bawah batas acuan'} trend={doAbove ? 'up' : 'down'} footnote="Acuan wisata bahari >5 mg/L" icon={Waves} tone="blue" />
-        <MetricCard title="Parameter dipantau" value="02" change="pH + DO" trend="up" footnote="Rancangan sensor kualitas air" icon={Activity} tone="purple" />
-      </div>
-
-      <section className="panel quality-reference-panel">
-        <div className="quality-reference-heading"><div><Badge tone="info">Acuan pembacaan</Badge><h3>Wisata Bahari · PP RI No. 22 Tahun 2021</h3><p>Lampiran VIII — Baku Mutu Air Laut. Acuan tampilan ini dipilih karena proyek berada pada kawasan dermaga penyeberangan wisata; peruntukan resmi lokasi tetap perlu dikonfirmasi.</p></div><a href="https://ppkl.menlhk.go.id/website/filebox/999/2107071506439.%20Lampiran%20VIII%20Salinan%20PP%20Nomor%2022%20Tahun%202021.pdf" target="_blank" rel="noreferrer">Lihat regulasi <ExternalLink size={13}/></a></div>
-        <div className="quality-reference-values"><div><small>Rentang pH</small><strong>7,0–8,5</strong></div><div><small>Oksigen terlarut (DO)</small><strong>&gt;5 mg/L</strong></div></div>
-      </section>
-
-      <div className="two-column-grid water-chart-grid">
-        <section className="panel quality-chart-panel">
-          <div className="panel-heading"><div><h3>Grafik pH air</h3><p>Tingkat keasaman atau kebasaan air</p></div><Badge tone={phInRange ? 'success' : 'warning'}>{phInRange ? 'Dalam acuan' : 'Periksa'}</Badge></div>
-          <div className="quality-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={waterQualityReadings} margin={{ top: 12, right: 15, left: -18, bottom: 2 }}>
-                <CartesianGrid stroke="#edf1f2" vertical={false} strokeDasharray="3 5" />
-                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#8b989d', fontSize: 10 }} />
-                <YAxis domain={[6.5, 9]} ticks={[6.5, 7, 7.5, 8, 8.5, 9]} axisLine={false} tickLine={false} tick={{ fill: '#8b989d', fontSize: 10 }} />
-                <ReferenceArea y1={7} y2={8.5} fill="#d8f0e8" fillOpacity={0.75} />
-                <ReferenceLine y={7} stroke="#269b83" strokeDasharray="4 4" />
-                <ReferenceLine y={8.5} stroke="#269b83" strokeDasharray="4 4" />
-                <Tooltip contentStyle={{ border: '1px solid #e7edef', borderRadius: 10, fontSize: 11 }} formatter={(value) => [Number(value).toFixed(1), 'pH']} />
-                <Line type="monotone" dataKey="ph" name="pH" stroke="#159b91" strokeWidth={2.8} dot={{ r: 3, fill: '#159b91', strokeWidth: 0 }} activeDot={{ r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="quality-chart-legend"><span><i className="legend-line ph-line"/>Nilai pH simulasi</span><span><i className="legend-band"/>Rentang acuan 7,0–8,5</span></div>
-          <div className="quality-explain"><strong>Cara membaca grafik pH</strong><p>Skala pH menunjukkan kondisi asam–basa. Nilai di bawah 7 bersifat asam, sedangkan di atas 7 bersifat basa. Untuk acuan wisata bahari yang dipakai pada tampilan ini, nilai pH diharapkan berada pada rentang 7,0–8,5. Titik di luar rentang perlu diperiksa dan dikonfirmasi melalui pengukuran ulang.</p></div>
-        </section>
-
-        <section className="panel quality-chart-panel">
-          <div className="panel-heading"><div><h3>Grafik dissolved oxygen (DO)</h3><p>Kadar oksigen terlarut di dalam air</p></div><Badge tone={doAbove ? 'success' : 'warning'}>{doAbove ? 'Di atas acuan' : 'Perlu perhatian'}</Badge></div>
-          <div className="quality-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={waterQualityReadings} margin={{ top: 12, right: 15, left: -18, bottom: 2 }}>
-                <CartesianGrid stroke="#edf1f2" vertical={false} strokeDasharray="3 5" />
-                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#8b989d', fontSize: 10 }} />
-                <YAxis domain={[0, 8]} ticks={[0, 2, 4, 5, 6, 8]} axisLine={false} tickLine={false} tick={{ fill: '#8b989d', fontSize: 10 }} />
-                <ReferenceArea y1={5} y2={8} fill="#dcecf8" fillOpacity={0.7} />
-                <ReferenceLine y={5} stroke="#d27b43" strokeDasharray="5 4" label={{ value: 'Acuan >5 mg/L', fill: '#b66c3e', fontSize: 9, position: 'insideTopRight' }} />
-                <Tooltip contentStyle={{ border: '1px solid #e7edef', borderRadius: 10, fontSize: 11 }} formatter={(value) => [`${Number(value).toFixed(1)} mg/L`, 'DO']} />
-                <Line type="monotone" dataKey="do" name="DO" stroke="#568eb9" strokeWidth={2.8} dot={{ r: 3, fill: '#568eb9', strokeWidth: 0 }} activeDot={{ r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="quality-chart-legend"><span><i className="legend-line do-line"/>Nilai DO simulasi</span><span><i className="legend-line threshold-line"/>Ambang acuan 5 mg/L</span></div>
-          <div className="quality-explain"><strong>Cara membaca grafik DO</strong><p>DO menunjukkan jumlah oksigen yang tersedia di dalam air. Semakin rendah nilainya, semakin sedikit oksigen terlarut yang tersedia bagi organisme air. Pada acuan wisata bahari, DO ditetapkan lebih dari 5 mg/L. Nilai yang mendekati atau di bawah batas perlu ditinjau bersama suhu, salinitas, waktu, dan kondisi perairan.</p></div>
-        </section>
-      </div>
-
-      <div className="notice-card"><Info size={18}/><div><strong>Catatan kualitas data</strong><p>Semua angka dan kurva pada halaman ini adalah data simulasi untuk memperlihatkan cara kerja dashboard. Nilai pH dan DO sesungguhnya memerlukan probe/sensor yang dikalibrasi dan pengukuran lapangan. Acuan PP 22/2021 berbeda menurut peruntukan air laut. Untuk kategori Pelabuhan, Lampiran VIII menetapkan pH 6,5–8,5 dan tidak mencantumkan nilai numerik DO pada kolom Pelabuhan; untuk Wisata Bahari, pH 7–8,5 dan DO &gt;5 mg/L.</p></div></div>
-    </div>
-  );
-}
 
 function CompositionCard() {
   const data = [
@@ -583,7 +527,6 @@ function OverviewPage({ alerts, onViewAll, onResolve, range, setRange, onNavigat
         <ChartCard range={range} setRange={setRange} />
         <CompositionCard />
       </div>
-      <WaterQualityPreview onNavigate={onNavigate} />
       <div className="two-column-grid lower-grid">
         <RecentDetections onViewAll={() => onNavigate('detections')} />
         <AlertsPreview alerts={alerts} onViewAll={() => onViewAll()} onResolve={onResolve} />
@@ -667,13 +610,12 @@ function DevicesPage() {
     { name: 'CCTV-02 · Pesisir selatan', desc: 'Hikvision DS-2XC6686G0/P-IZHRS · 8 MP 4K · 316L', icon: Radio, status: 'Titik usulan', tone: 'info', value: 'Belum terpasang' },
     { name: 'Edge Computing Unit', desc: 'NVIDIA Jetson · YOLOv8', icon: Cpu, status: 'Mode demo', tone: 'info', value: 'AI inference tidak dijalankan' },
     { name: 'MQTT Broker', desc: 'Jalur komunikasi metadata', icon: Waves, status: 'Belum terhubung', tone: 'neutral', value: 'Menunggu integrasi backend' },
-    { name: 'Probe kualitas air', desc: 'Sensor pH dan dissolved oxygen (DO)', icon: Droplets, status: 'Rancangan', tone: 'info', value: 'Data simulasi' },
     { name: 'WhatsApp Gateway', desc: 'Go + whatsmeow · Koyeb', icon: MessageCircle, status: 'Belum terhubung', tone: 'warning', value: 'Notifikasi disimulasikan' },
   ];
   return (
     <div className="page-stack">
       <div className="metrics-grid map-metrics">
-        <MetricCard title="Perangkat terdaftar" value="06" change="Dalam rancangan" trend="up" footnote="komponen sistem" icon={Cpu} tone="blue" />
+        <MetricCard title="Perangkat terdaftar" value="05" change="Dalam rancangan" trend="up" footnote="komponen sistem" icon={Cpu} tone="blue" />
         <MetricCard title="Titik CCTV usulan" value="02" change="Belum dipasang" trend="up" footnote="perlu survei penempatan" icon={Wifi} tone="teal" />
         <MetricCard title="Gangguan sistem" value="00" change="Belum ada" trend="down" footnote="belum ada integrasi nyata" icon={ShieldCheck} tone="purple" />
       </div>
@@ -683,7 +625,7 @@ function DevicesPage() {
       <section className="panel camera-product-panel">
         <div className="panel-heading"><div><h3>Perangkat kamera yang dipilih</h3><p>Foto produk mengacu pada model Hikvision yang direncanakan untuk kedua titik CCTV.</p></div><Badge tone="info">Referensi produk</Badge></div>
         <div className="camera-product-layout">
-          <a className="camera-product-photo" href="https://www.dssl.ru/upload/iblock/530/DS_2XC6686G0_P_IZHRS_2.8_12_4.jpg" target="_blank" rel="noreferrer" aria-label="Buka foto produk Hikvision"><img src="https://www.dssl.ru/upload/iblock/530/DS_2XC6686G0_P_IZHRS_2.8_12_4.jpg" alt="Hikvision DS-2XC6686G0/P-IZHRS, varian With -R dengan wiper"/><span>Varian atas: With -R (wiper)</span></a>
+          <PhotoZoomButton className="camera-product-photo" src="https://www.dssl.ru/upload/iblock/530/DS_2XC6686G0_P_IZHRS_2.8_12_4.jpg" alt="Hikvision DS-2XC6686G0/P-IZHRS, varian With -R dengan wiper"><span>Varian produk: With -R (wiper)</span></PhotoZoomButton>
           <div className="camera-product-info"><span className="camera-brand-label">HIKVISION · ANTI-CORROSION SERIES</span><h4>DS-2XC6686G0/P-IZHRS (2.8–12 mm)</h4><p>Kamera bullet jaringan 8 MP dengan housing stainless steel 316L dan wiper bawaan pada varian -R. Foto produk di samping merupakan foto model yang dirujuk, bukan render kamera generik.</p><div className="camera-product-specs"><span>8 MP / 4K</span><span>316L</span><span>IP67</span><span>NEMA 4X</span><span>Wiper (-R)</span><span>PoE 802.3at</span></div><div className="camera-source-links"><a href="https://securitylab.hikvision.com/en/products/IP-Products/Explosion-Proof---Anti-corrosion-Series/Anti-corrosion-Series/ds-2xc6686g0-p-izh-r-s/" target="_blank" rel="noreferrer">Halaman produk Hikvision <ExternalLink size={12}/></a><a href="https://assets.hikvision.com/prd/normal/all/doc/m000061886/DS-2XC6686G0_P-IZHRS_Datasheet_20260304.pdf" target="_blank" rel="noreferrer">Datasheet resmi <FileText size={12}/></a></div></div>
         </div>
       </section>
@@ -727,7 +669,6 @@ function PageSkeleton({ page }) {
         <div className="two-column-grid lower-grid"><SkeletonPanel kind="table" /><SkeletonPanel kind="alerts" /></div>
       </>}
       {page === 'map' && <SkeletonPanel kind="map" />}
-      {page === 'quality' && <div className="two-column-grid"><SkeletonPanel /><SkeletonPanel /></div>}
       {page === 'detections' && <SkeletonPanel kind="table" />}
       {page === 'alerts' && <SkeletonPanel kind="alerts" />}
       {page === 'devices' && <SkeletonPanel kind="devices" />}
@@ -747,6 +688,8 @@ export default function App() {
   const [noticeVisible, setNoticeVisible] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isPageLoading, setIsPageLoading] = useState(true);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const openLightbox = (photo) => setLightboxPhoto(photo);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000);
@@ -758,6 +701,20 @@ export default function App() {
     const timer = window.setTimeout(() => setIsPageLoading(false), 680);
     return () => window.clearTimeout(timer);
   }, [page, refreshKey]);
+
+  useEffect(() => {
+    if (!lightboxPhoto) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setLightboxPhoto(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [lightboxPhoto]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -797,6 +754,7 @@ export default function App() {
   const [title, subtitle] = pageMeta[page];
 
   return (
+    <PhotoLightboxContext.Provider value={openLightbox}>
     <div className="app-shell">
       <aside className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`}>
         <div className="brand-lockup">
@@ -860,7 +818,6 @@ export default function App() {
           {isPageLoading ? <PageSkeleton page={page} /> : <>
             {page === 'overview' && <OverviewPage alerts={alerts} onViewAll={() => setPageSafe('alerts')} onResolve={resolveAlert} range={range} setRange={setRange} onNavigate={setPageSafe} />}
             {page === 'map' && <MapPage />}
-            {page === 'quality' && <WaterQualityPage />}
             {page === 'detections' && <DetectionsPage />}
             {page === 'alerts' && <AlertsPage alerts={alerts} onResolve={resolveAlert} onTestAlert={createTestAlert} />}
             {page === 'devices' && <DevicesPage />}
@@ -873,12 +830,11 @@ export default function App() {
         <section className="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
           <div className="help-modal-heading"><span className="help-modal-icon"><BookOpen size={20} /></span><button className="icon-button" onClick={() => setHelpOpen(false)} aria-label="Tutup panduan"><X size={18} /></button></div>
           <h2 id="help-modal-title">Panduan dashboard</h2>
-          <p>Dashboard ini merupakan prototipe visual MarLit Vision. Gunakan navigasi untuk menjelajahi simulasi pemantauan sampah laut dan kualitas air.</p>
+          <p>Dashboard ini merupakan prototipe visual MarLit Vision. Gunakan navigasi untuk menjelajahi simulasi pemantauan sampah laut di kawasan pesisir Pulomerak.</p>
           <div className="help-steps">
             <div><strong>Ringkasan</strong><span>Lihat KPI, tren deteksi, dan peringatan terbaru.</span></div>
             <div><strong>Peta Sebaran</strong><span>Aktifkan atau nonaktifkan lapisan heatmap, zona, deteksi, dan kamera. Gunakan kontrol zoom untuk menjelajah peta.</span></div>
             <div><strong>Deteksi Sampah</strong><span>Cari dan filter riwayat deteksi, lalu ekspor hasil ke CSV.</span></div>
-            <div><strong>Kualitas Air</strong><span>Baca grafik pH dan DO, termasuk rentang acuan dan penjelasannya.</span></div>
             <div><strong>Peringatan</strong><span>Buat alert uji dan tandai peringatan yang sudah ditangani.</span></div>
             <div><strong>Perangkat</strong><span>Lihat status simulasi komponen arsitektur.</span></div>
           </div>
@@ -886,6 +842,18 @@ export default function App() {
         </section>
       </div>}
       {toast && <div className="toast-message"><CheckCircle2 size={17} />{toast}<button onClick={() => setToast('')} aria-label="Tutup pesan"><X size={15} /></button></div>}
+      {lightboxPhoto && <div className="photo-lightbox-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setLightboxPhoto(null); }}>
+        <section className="photo-lightbox-dialog" role="dialog" aria-modal="true" aria-label={`Foto ukuran penuh: ${lightboxPhoto.alt}`}>
+          <div className="photo-lightbox-toolbar">
+            <div className="photo-lightbox-caption"><strong>{lightboxPhoto.alt}</strong><span>Foto ukuran penuh · Tekan Esc atau ketuk area luar untuk menutup</span></div>
+            <button className="photo-lightbox-close" onClick={() => setLightboxPhoto(null)} aria-label="Tutup foto"><X size={21} /></button>
+          </div>
+          <div className="photo-lightbox-stage">
+            <img className="photo-lightbox-image" src={lightboxPhoto.src} alt={lightboxPhoto.alt} />
+          </div>
+        </section>
+      </div>}
     </div>
+    </PhotoLightboxContext.Provider>
   );
 }
