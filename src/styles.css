@@ -534,9 +534,9 @@ h1 { font: 800 25px 'Manrope', sans-serif; color: #183740; letter-spacing: -.045
   display: grid; grid-template-columns: minmax(210px, 30%) minmax(0, 1fr);
   gap: 18px; padding: 14px; background: #fbfdfd;
   border: 1px solid #e4eded; border-radius: 12px;
-  box-shadow: 0 5px 18px rgba(31,74,77,.055); min-width: 0;
+  box-shadow: 0 5px 18px rgba(31,74,77,.055); min-width: 0; align-items: start;
 }
-.map-feature-image-wrap { min-height: 200px; position: relative; overflow: hidden; border-radius: 9px; background: #e8eeee; }
+.map-feature-image-wrap { min-height: 200px; position: relative; align-self: start; width: 100%; overflow: hidden; border-radius: 9px; background: #e8eeee; }
 .map-feature-image-wrap img { display: block; width: 100%; height: 100%; min-height: 200px; max-height: 280px; object-fit: cover; }
 .map-feature-image-tag {
   position: absolute; left: 10px; top: 10px; border-radius: 6px;
