@@ -173,18 +173,6 @@ export const coastalObservationClusters = [
   },
 ];
 
-// Deret pH dan dissolved oxygen (DO) di bawah ini merupakan data simulasi untuk demonstrasi grafik,
-// bukan hasil pengukuran probe kualitas air di Pulomerak. Acuan antarmuka: peruntukan Wisata Bahari.
-export const waterQualityReadings = [
-  { time: '07.00', ph: 7.8, do: 6.4 },
-  { time: '09.00', ph: 7.9, do: 6.2 },
-  { time: '11.00', ph: 8.0, do: 6.0 },
-  { time: '13.00', ph: 8.1, do: 5.7 },
-  { time: '15.00', ph: 7.9, do: 5.5 },
-  { time: '17.00', ph: 7.8, do: 5.8 },
-  { time: '19.00', ph: 7.9, do: 6.1 },
-];
-
 // Posisi CCTV berikut adalah titik usulan untuk prototipe, bukan perangkat yang telah dipasang.
 // Foto yang ditampilkan merupakan foto referensi area, bukan live stream CCTV.
 export const proposedCameras = [
